@@ -693,9 +693,57 @@
   #rv-toast{ position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px); background:#242220; color:#fff; padding:10px 16px;
     border-radius:20px; font:500 13px 'Poppins',sans-serif; z-index:200; opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; max-width:88vw; text-align:center; }
   #rv-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ===== Age Gate / leyendas alcohol (Ley 24.788) ===== */
+  #age-gate{ position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center;
+    padding:1rem; background:rgba(12,10,6,.96); }
+  #age-gate.open{ display:flex; }
+  #age-gate .ag-box{ width:100%; max-width:26rem; background:#1b1710; border:1px solid #55503f; border-radius:1rem;
+    padding:1.5rem 1.25rem; text-align:center; color:#eae6da; font-family:'Poppins',sans-serif; max-height:100%; overflow:auto; }
+  #age-gate .ag-ic{ font-size:2.25rem; line-height:1; margin-bottom:.5rem; }
+  #age-gate h2{ font-size:1.25rem; margin:0 0 .5rem; color:#e8c97a; }
+  #age-gate p{ font-size:.875rem; line-height:1.55; margin:0 0 1rem; color:#cfc9ba; }
+  #age-gate .ag-btns{ display:flex; flex-direction:column; gap:.625rem; }
+  #age-gate button{ min-height:2.75rem; border-radius:.5rem; border:0; font:600 .9375rem 'Poppins',sans-serif; cursor:pointer; padding:.5rem 1rem; }
+  #age-gate #ag-yes{ background:#e8c97a; color:#2b2216; }
+  #age-gate #ag-no{ background:transparent; border:1px solid #55503f; color:#eae6da; }
+  #age-gate .ag-deny{ display:none; color:#f0b4a8; font-weight:600; margin-top:1rem; font-size:.875rem; }
+  #age-gate.denied .ag-deny{ display:block; }
+  #age-gate.denied .ag-btns{ display:none; }
+  #age-gate .ag-legal{ font-size:.75rem; color:#948d7c; margin:1rem 0 0; }
+  .alc-legend{ margin:.5rem 1rem; padding:.5rem .75rem; border:1px solid #c9c2ae; border-radius:.5rem; text-align:center;
+    font-size:.75rem; font-weight:600; line-height:1.4; letter-spacing:.2px; }
+  .alc-legend span{ display:inline-block; margin:0 .4rem; }
+  .alc-notice{ display:none; margin:.5rem 1rem; padding:.625rem .75rem; border-radius:.5rem; background:#3a2b12; color:#f3dca3; font-size:.8125rem; text-align:center; }
+  body.alc-closed .alc-notice{ display:block; }
+  .alc-off{ display:none !important; }
+  body.age-locked{ overflow:hidden; }
+  /* ===== Responsive: puntos de quiebre explícitos + tap targets ===== */
+  .qty-btn{ min-width:2.5rem; min-height:2.5rem; }
+  .lang-toggle button{ min-height:2.5rem; height:2.5rem; }
+  .share-top{ min-height:2.5rem; height:2.5rem; }
+  @media (max-width:320px){ html{ font-size:15px; } .sheet{ padding-left:.5rem; padding-right:.5rem; } .share-top .st-txt{ display:none; } }
+  @media (min-width:768px){ .alc-legend{ margin-left:auto; margin-right:auto; max-width:40rem; } }
+  @media (min-width:1024px){ .sheet{ max-width:72rem; } }
+  @media (min-width:1440px){ .sheet{ max-width:84rem; } html{ font-size:17px; } }
+  @media (orientation:landscape) and (max-height:480px){ #age-gate .ag-box{ padding:1rem; } #age-gate .ag-ic{ display:none; } header .logo{ max-height:5rem; width:auto; } }
 </style>
 </head>
 <body>
+<noscript><style>#age-gate{display:none!important}</style><p style="margin:0;padding:.6rem;text-align:center;background:#3a2b12;color:#f3dca3;font:600 .8rem sans-serif">Sitio para mayores de 18 años. Prohibida su venta a menores de 18 años. Beber con moderación.</p></noscript>
+<div id="age-gate" role="dialog" aria-modal="true" aria-labelledby="ag-title" aria-describedby="ag-desc">
+  <div class="ag-box">
+    <div class="ag-ic" aria-hidden="true">🔞</div>
+    <h2 id="ag-title">Verificación de edad</h2>
+    <p id="ag-desc">Este menú incluye bebidas alcohólicas y tabaco. ¿Sos mayor de 18 años?</p>
+    <div class="ag-btns">
+      <button type="button" id="ag-yes">Soy mayor de 18</button>
+      <button type="button" id="ag-no">Soy menor de 18</button>
+    </div>
+    <p class="ag-deny" id="ag-deny" role="alert">Lo sentimos: no podés acceder a este contenido. Prohibida su venta a menores de 18 años.</p>
+    <p class="ag-legal">Prohibida su venta a menores de 18 años. Beber con moderación.</p>
+  </div>
+</div>
 <div class="sheet">
 
   <header>
@@ -719,6 +767,8 @@
   </div>
 
   <div class="price-note">🧾 Todos los precios publicados incluyen impuestos.</div>
+  <div class="alc-legend" id="alc-legend" role="note"><span>🔞 Prohibida su venta a menores de 18 años.</span><span>🥂 Beber con moderación.</span></div>
+  <div class="alc-notice" id="alc-notice" role="status">La venta de bebidas alcohólicas no está disponible en este horario.</div>
 
   <!-- ===== FILTROS Y BUSCADOR ===== -->
   <div id="toolbar">
@@ -1634,6 +1684,7 @@
   <footer>
     <div class="foot-brand">RAVE</div>
     Almacén y Licorería · Urquiza 1052 · Salta, Argentina
+    <div class="foot-legal" style="margin-top:.4rem;font-weight:600">Prohibida su venta a menores de 18 años. Beber con moderación.</div>
     <button type="button" id="team-access-btn" class="team-link">🔒 Acceso del equipo</button>
   </footer>
 
@@ -1648,7 +1699,7 @@
     <h2>Hashishi</h2>
     <p class="dc-tagline">¿Te gustó este sistema para tu negocio?</p>
     <p><b>Digitalizá tus ventas, fidelizá tus clientes y controlá tu caja en tiempo real.</b> Agendá una demo gratuita con el equipo de Hashishi por WhatsApp o escribinos por mail.</p>
-    <p>Carrito con pedidos directos por WhatsApp, club de clientes con sorteos automáticos y panel de control privado —todo en una sola página, sin comisión por venta y sin depender de apps de delivery. Lo armamos a medida para almacenes, kioscos, bares y locales gastronómicos, listo en pocos días.</p>
+    <p>Carrito con pedidos directos por WhatsApp, club de clientes con sorteos automáticos y panel de control privado —todo en una sola página, sin comisión por venta y sin depender de apps de delivery. Lo armamos a medida para comercios, almacenes, restaurantes y bares, gimnasios, peluquerías, talleres, spas, clubes, cursos y mucho más, listo en pocos días.</p>
     <ul>
       <li>🛒 Carrito y pedidos por WhatsApp</li>
       <li>🎉 Club de clientes, sorteos y cumpleaños</li>
@@ -1660,7 +1711,7 @@
          target="_blank" rel="noopener">💬 Quiero este sistema en mi local 🚀</a>
       <a class="dc-btn mail" href="mailto:contacto@hashishi-dev.com.ar">✉️ contacto@hashishi-dev.com.ar</a>
     </div>
-    <div class="dc-fine">Potenciado y Desarrollado por Hashishi | Soluciones de Digitalización Comercial<br>Salta, Argentina · www.hashishi-dev.com.ar</div>
+    <div class="dc-fine">Potenciado y Desarrollado por Hashishi | Soluciones de Digitalización Comercial<br>Tel./WhatsApp: +54 9 XXX-XXXXXXX · Salta, Argentina · www.hashishi-dev.com.ar</div>
   </div>
 
 </div>
@@ -2323,13 +2374,22 @@
     ['.dc-kicker','Design &amp; development'],
     ['.dev-credit .dc-tagline','Did you like this system for your business?'],
     ['.dev-credit p:nth-of-type(2)','<b>Digitalize your sales, build customer loyalty and control your cash in real time.</b> Book a free demo with the Hashishi team via WhatsApp or write to us by email.'],
-    ['.dev-credit p:nth-of-type(3)','Cart with direct WhatsApp orders, customer club with automatic giveaways and a private control panel —all in one page, no commission per sale and no dependence on delivery apps. Custom-built for grocery stores, kiosks, bars and restaurants, ready in a few days.'],
+    ['.dev-credit p:nth-of-type(3)','Cart with direct WhatsApp orders, customer club with automatic giveaways and a private control panel —all in one page, no commission per sale and no dependence on delivery apps. Custom-built for stores, grocery shops, restaurants and bars, gyms, hair salons, workshops, spas, clubs, courses and more, ready in a few days.'],
     ['.dev-credit li:nth-child(1)','🛒 Cart and WhatsApp orders'],
     ['.dev-credit li:nth-child(2)','🎉 Customer club, giveaways and birthdays'],
     ['.dev-credit li:nth-child(3)','💰 No commission per sale, unlike delivery apps'],
     ['.dev-credit li:nth-child(4)','🔒 Secure forms, compliant with Law 25.326'],
     ['.dc-btn.wa','💬 I want this system in my store 🚀'],
-    ['.dc-fine','Powered and Developed by Hashishi | Commercial Digitalization Solutions<br>Salta, Argentina · www.hashishi-dev.com.ar'],
+    ['.dc-fine','Powered and Developed by Hashishi | Commercial Digitalization Solutions<br>Phone/WhatsApp: +54 9 XXX-XXXXXXX · Salta, Argentina · www.hashishi-dev.com.ar'],
+    ['#age-gate #ag-title','Age verification'],
+    ['#age-gate #ag-desc','This menu includes alcoholic beverages and tobacco. Are you over 18?'],
+    ['#ag-yes','I am over 18'],
+    ['#ag-no','I am under 18'],
+    ['#ag-deny','Sorry: you cannot access this content. Sale prohibited to persons under 18.'],
+    ['#age-gate .ag-legal','Sale prohibited to persons under 18. Drink responsibly.'],
+    ['#alc-legend','<span>🔞 Sale prohibited to persons under 18.</span><span>🥂 Drink responsibly.</span>'],
+    ['#alc-notice','Alcoholic beverages cannot be sold at this time.'],
+    ['.foot-legal','Sale prohibited to persons under 18. Drink responsibly.'],
     ['#sale-fab .sf-txt','Your business?'],
     ['#sale-fab','Have a business? Get this system for your store','aria'],
     ['#cart-bar .cb-left',' item(s)','text2'],
@@ -2465,6 +2525,53 @@
   });
 
   if(lang === 'en') apply();
+})();
+</script>
+<script>
+/* ===== Age Gate (Ley 24.788) + restricción horaria opcional de alcohol ===== */
+(function(){
+  // Configurable: poner enabled:true para ocultar bebidas alcohólicas fuera del horario de venta (hora de Salta, 0-23).
+  // Ejemplo Salta: venta permitida 08:00 a 23:30 -> from:8, to:23.5 (decimal). Por defecto DESACTIVADO.
+  var ALCOHOL_RESTRICTION = { enabled:false, from:8, to:23.5, tz:'America/Argentina/Salta', cats:['promo','vino'] };
+  var gate = document.getElementById('age-gate'), yes = document.getElementById('ag-yes'), no = document.getElementById('ag-no');
+  var sheet = document.querySelector('.sheet');
+  function ok(){ try{ return sessionStorage.getItem('rave_age18') === '1'; }catch(e){ return false; } }
+  function lock(on){
+    document.body.classList.toggle('age-locked', on);
+    if(sheet){ if(on) sheet.setAttribute('inert',''); else sheet.removeAttribute('inert'); sheet.setAttribute('aria-hidden', on?'true':'false'); }
+  }
+  function open(){ gate.classList.add('open'); lock(true); setTimeout(function(){ try{ yes.focus(); }catch(e){} }, 30); }
+  function close(){ gate.classList.remove('open'); lock(false); }
+  if(!ok()) open();
+  yes.addEventListener('click', function(){ try{ sessionStorage.setItem('rave_age18','1'); }catch(e){} close(); });
+  no.addEventListener('click', function(){ gate.classList.add('denied'); var d=document.getElementById('ag-deny'); if(d){ d.setAttribute('tabindex','-1'); d.focus(); } });
+  gate.addEventListener('keydown', function(e){ // focus trap
+    if(e.key !== 'Tab') return;
+    var f = [yes, no].filter(function(b){ return b.offsetParent !== null; });
+    if(!f.length){ e.preventDefault(); return; }
+    var i = f.indexOf(document.activeElement);
+    if(e.shiftKey && i <= 0){ e.preventDefault(); f[f.length-1].focus(); }
+    else if(!e.shiftKey && i === f.length-1){ e.preventDefault(); f[0].focus(); }
+  });
+
+  function nowDecimal(){
+    try{
+      var parts = new Intl.DateTimeFormat('en-GB',{timeZone:ALCOHOL_RESTRICTION.tz,hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
+      var h=0,m=0; parts.forEach(function(x){ if(x.type==='hour') h=+x.value%24; if(x.type==='minute') m=+x.value; });
+      return h + m/60;
+    }catch(e){ var d=new Date(); return d.getHours()+d.getMinutes()/60; }
+  }
+  function applyHours(){
+    var R = ALCOHOL_RESTRICTION, closed = false;
+    if(R.enabled){ var n = nowDecimal(); closed = (R.from <= R.to) ? !(n >= R.from && n < R.to) : !(n >= R.from || n < R.to); }
+    document.body.classList.toggle('alc-closed', closed);
+    R.cats.forEach(function(c){
+      document.querySelectorAll('.section[data-cat="'+c+'"], .cat-chip[data-cat="'+c+'"]').forEach(function(el){ el.classList.toggle('alc-off', closed); });
+    });
+    if(closed){ var all=document.querySelector('.cat-chip[data-cat="all"]'); var act=document.querySelector('.cat-chip.active'); if(act && act.classList.contains('alc-off') && all) all.click(); }
+  }
+  applyHours(); setInterval(applyHours, 60000);
+  window.RAVE_applyHours = applyHours; window.RAVE_ALC = ALCOHOL_RESTRICTION;
 })();
 </script>
 </body>
