@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://raveholding.github.io/menu-rave/sitemap.xml
