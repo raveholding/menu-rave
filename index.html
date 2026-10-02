@@ -4245,6 +4245,13 @@ var QR = (function(){
     precargarClientes().then(function(){
       gateHide();
       abrirPanel();
+      var r = estadoRespaldo();
+      if(r.avisar){
+        setTimeout(function(){
+          toast(r.dias == null ? 'Todavía no hiciste ningún respaldo de la base'
+                               : 'Hace ' + r.dias + ' días que no hacés respaldo', 'bad');
+        }, 1200);
+      }
     });
   }
   function salir(){
@@ -4343,8 +4350,12 @@ var QR = (function(){
       }, null, 1);
     }
     bajarArchivo('rave-respaldo-' + ymd() + (legible ? '-legible' : '-cifrado') + '.json', payload);
+    S.db.cfg.ultimoRespaldo = Date.now();
     audit('respaldo.exportado', legible ? 'legible (sin cifrar)' : 'cifrado');
-    toast('Respaldo descargado', 'ok');
+    save();
+    renderShell();
+    if(R[S.sec]) R[S.sec]();
+    toast('Respaldo descargado · guardalo en un pendrive o en la nube', 'ok');
   }
   function importarRespaldo(file){
     var fr = new FileReader();
@@ -4469,6 +4480,37 @@ var QR = (function(){
   /* =======================================================================
      12. DASHBOARD
      ======================================================================= */
+
+  /* =======================================================================
+     Recordatorio de respaldo
+     Los datos viven sólo en este dispositivo: si no hay copia y se pierde el
+     equipo, no hay de dónde recuperarlos. Por eso el aviso es insistente.
+     ======================================================================= */
+  function estadoRespaldo(){
+    var ult = S.db.cfg.ultimoRespaldo || 0;
+    var hayDatos = S.db.ventas.length > 0 || S.db.clientes.length > 0 || S.db.prod.length > 0;
+    if(!ult){
+      return { dias:null, avisar:hayDatos, urgente:S.db.ventas.length > 0 };
+    }
+    var dias = Math.floor((Date.now() - ult) / 86400000);
+    return { dias:dias, avisar:dias >= 7, urgente:dias >= 14 };
+  }
+  function tarjetaRespaldo(){
+    var r = estadoRespaldo();
+    if(!r.avisar) return '';
+    return '<div class="card b12" style="margin-bottom:2px">' +
+      '<div class="note ' + (r.urgente ? 'bad' : 'warn') + '"><span class="ic">💾</span><div>' +
+      '<b>' + (r.dias == null
+          ? 'Todavía no hiciste ningún respaldo.'
+          : 'Hace ' + r.dias + ' días que no hacés respaldo.') + '</b> ' +
+      'Los datos del comercio están sólo en este dispositivo: si se formatea la PC, se borra el ' +
+      'navegador o se pierde el equipo, no hay de dónde recuperarlos. ' +
+      'El archivo sale cifrado, así que lo podés guardar en un pendrive o en la nube sin riesgo.' +
+      '<div style="margin-top:12px"><button class="btn gold sm" type="button" id="dash-bk">Hacer el respaldo ahora</button>' +
+      '<button class="btn sm ghost" type="button" data-go="config" style="margin-left:8px">Ver respaldos</button></div>' +
+      '</div></div></div>';
+  }
+
   R.dash = function(){
     var c = S.db.cfg;
     var hoy = ventasHoy();
@@ -4520,6 +4562,7 @@ var QR = (function(){
     }
 
     $('#dash-bento').innerHTML =
+      tarjetaRespaldo() +
       /* fila 1: KPIs */
       '<div class="card b3"><div class="c-head"><span class="c-ttl">Ventas de hoy</span></div>' +
         '<div class="kpi">' + money(tHoy) + '</div>' +
@@ -4580,6 +4623,9 @@ var QR = (function(){
             }).join('') + '</div>'
           : '<div class="empty" style="padding:18px 0">Todavía no hay ventas hoy.</div>') +
       '</div>';
+
+    var bk = $('#dash-bk');
+    if(bk) bk.addEventListener('click', function(){ exportarRespaldo(false); });
   };
 
   var PAGO_NOM = {
@@ -6408,6 +6454,9 @@ var QR = (function(){
           '<div class="r"><span class="nm">Clientes</span><span class="vl">' + S.db.clientes.length + '</span></div>' +
           '<div class="r"><span class="nm">Turnos de caja</span><span class="vl">' + S.db.turnos.length + '</span></div>' +
           '<div class="r"><span class="nm">Tamaño en el navegador</span><span class="vl">' + tamanioBase() + '</span></div>' +
+          '<div class="r"><span class="nm">Último respaldo</span><span class="vl">' +
+            (S.db.cfg.ultimoRespaldo ? fechaCorta(S.db.cfg.ultimoRespaldo) + ' · hace ' + estadoRespaldo().dias + ' días'
+                                     : '<b style="color:var(--p-bad)">nunca</b>') + '</span></div>' +
         '</div>' +
       '</div>' +
 
