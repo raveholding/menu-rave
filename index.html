@@ -1315,6 +1315,7 @@ body.erp-open #cart-overlay{ display:none !important; }
 #erp-gate .gsteps i.on{ background:#c9963e; }
 #erp-gate .glink{ display:block; width:100%; background:none; border:0; color:#8a6a2a; font:inherit; font-size:12.5px;
   font-weight:600; margin:12px 0 0; padding:6px; cursor:pointer; text-align:center; text-decoration:underline; text-underline-offset:3px; }
+#erp-gate #gs-setup .glink{ margin:2px 0 16px; }
 #erp-gate #gs-nube .glogo{ font-size:20px; }
 #erp-gate #n-coms .gbtn{ margin-top:6px; }
 #erp .top button.pill{ font-family:inherit; cursor:pointer; }
@@ -9525,6 +9526,12 @@ var QR = (function(){
         else { setupIr(1); gateShow('setup'); }
       }
     };
+    /* acceso directo instalado en Windows: abre directo en el ingreso del equipo */
+    if(/^#panel\b/.test(String(location.hash || ''))){
+      var ag = D.getElementById('age-gate');
+      if(ag) ag.style.display = 'none';
+      setTimeout(function(){ window.RAVE_PANEL.abrir(); }, 30);
+    }
     var tb = D.getElementById('team-access-btn');
     if(tb) tb.addEventListener('click', function(){ window.RAVE_PANEL.abrir(); });
     var bt = D.getElementById('brand-title');

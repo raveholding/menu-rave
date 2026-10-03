@@ -198,6 +198,41 @@
         paso('ok', 'El secreto de las firmas es ilegible desde el navegador',
              'Respuesta: ' + msg(r) + '. Sólo lo pueden leer las funciones del servidor.');
       }
+      /* --- script 02: nube para varios equipos --- */
+      return api('/rest/v1/menus?select=slug&limit=5');
+    }).then(function(r){
+      if(r.ok){
+        paso('ok', 'Script 02 aplicado: existe el menú en la nube',
+             (Array.isArray(r.data) && r.data.length) ? 'Menús publicados: ' + r.data.map(function(m){ return m.slug; }).join(', ')
+                                                     : 'Todavía no hay menús publicados (se publica solo al conectar el comercio).');
+      } else {
+        fallas++;
+        paso('bad', 'Falta correr el script 02-sincronizacion.sql',
+             'No encuentro la tabla de menús. Pegalo en el SQL Editor y tocá Run. Respuesta: ' + msg(r));
+      }
+      return api('/rest/v1/registros?select=id&limit=1');
+    }).then(function(r){
+      if(r.ok && Array.isArray(r.data) && r.data.length){
+        fallas++;
+        paso('bad', 'PROBLEMA GRAVE: los datos sincronizados se leen sin sesión', 'Avisame enseguida.');
+      } else if(r.status === 404){
+        fallas++;
+        paso('bad', 'Falta la tabla de sincronización (script 02)', msg(r));
+      } else {
+        paso('ok', 'Los datos sincronizados están cerrados sin sesión', 'Respuesta: ' + (r.ok ? 'nada visible' : msg(r)) + '.');
+      }
+      return api('/rest/v1/rpc/sincronizar', { method:'POST', body:{ p_comercio:'00000000-0000-0000-0000-000000000000', p_dispositivo:'x', p_cambios:[] } });
+    }).then(function(r){
+      var t = JSON.stringify(r.data || '');
+      if(r.ok){
+        fallas++;
+        paso('bad', 'PROBLEMA GRAVE: se puede sincronizar sin sesión', 'Avisame enseguida.');
+      } else if(/Could not find the function|PGRST202/.test(t)){
+        fallas++;
+        paso('bad', 'Falta la función de sincronización (script 02)', 'Corré 02-sincronizacion.sql en el SQL Editor.');
+      } else {
+        paso('ok', 'La sincronización existe y exige sesión', 'Sin sesión responde: ' + msg(r) + '.');
+      }
       if(fallas === 0){
         cerrar('ok', 'Primera parte en orden: la base está levantada, el esquema aplicado y lo privado cerrado. Seguí con el paso 2.');
       } else {
