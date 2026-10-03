@@ -11,7 +11,7 @@
      archivo (no hay build ni archivos .js/.css separados). Headers reales
      como HSTS o X-Frame-Options los agrega GitHub Pages en la respuesta HTTP;
      eso no se puede fijar desde un <meta>. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-src https://www.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-src https://www.google.com; connect-src 'self' https://vrkvfshwlbxpgqtmmdeu.supabase.co https://script.google.com https://script.googleusercontent.com; base-uri 'self'; form-action 'self'; object-src 'none'">
 <title>Almacén y Licorería RAVE · Menú digital y pedidos por WhatsApp · Salta</title>
 <meta name="description" content="Menú digital de Almacén y Licorería RAVE en Urquiza 1052, Salta: vinos, fernet, gin, cervezas, cigarrillos y combos. Pedí por WhatsApp con retiro o entrega a domicilio. Abierto hasta las 23:30.">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -908,6 +908,10 @@ body.erp-open #cart-overlay{ display:none !important; }
 /* ==========================================================================
    CUERPO · SIDEBAR + MAIN
    ========================================================================== */
+/* el velo del menú lateral no ocupa lugar en la grilla (si no, la topbar se estira) */
+#erp .scrim{ display:none; position:fixed; }
+#erp .top{ grid-row:1; }
+#erp .body{ grid-row:2; }
 #erp .body{ display:grid; grid-template-columns:var(--p-side-w) minmax(0,1fr); min-height:0; min-width:0; }
 /* la barra inferior es sólo para celulares; en escritorio no existe */
 #erp .mobile-bar{ display:none; }
@@ -1309,6 +1313,11 @@ body.erp-open #cart-overlay{ display:none !important; }
 #erp-gate .gsteps{ display:flex; gap:6px; justify-content:center; margin-bottom:18px; }
 #erp-gate .gsteps i{ width:28px; height:3px; border-radius:2px; background:#e8e3d9; }
 #erp-gate .gsteps i.on{ background:#c9963e; }
+#erp-gate .glink{ display:block; width:100%; background:none; border:0; color:#8a6a2a; font:inherit; font-size:12.5px;
+  font-weight:600; margin:12px 0 0; padding:6px; cursor:pointer; text-align:center; text-decoration:underline; text-underline-offset:3px; }
+#erp-gate #gs-nube .glogo{ font-size:20px; }
+#erp-gate #n-coms .gbtn{ margin-top:6px; }
+#erp .top button.pill{ font-family:inherit; cursor:pointer; }
 #erp-gate .gnote{ font-size:11px; color:#9b958a; line-height:1.5; margin-top:16px; text-align:center; }
 #erp-gate .gstep{ display:none; } #erp-gate .gstep.on{ display:block; }
 #erp-gate .meter{ height:5px; border-radius:3px; background:#e8e3d9; overflow:hidden; margin-top:7px; }
@@ -1419,6 +1428,10 @@ body.erp-open #cart-overlay{ display:none !important; }
   #erp .lang{ display:none; }
   #erp .top{ gap:7px; }
   #erp .top-logo{ width:32px; height:32px; font-size:15px; }
+  /* el indicador de la nube queda en un ícono de color */
+  #erp .top #erp-nube-pill{ padding:0 9px; }
+  #erp .top #erp-nube-pill .nb-tx{ display:none; }
+  #erp .top #erp-caja-pill{ padding:0 9px; }
 }
 @media (max-width:420px){
   #erp .b3,#erp .b4,#erp .b6{ grid-column:span 12; }
@@ -1593,15 +1606,49 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
   }
   function precio(n){ return '$ ' + (Number(n) || 0).toLocaleString('es-AR'); }
 
+  /* Menú en la nube: lo publica el panel solo, cada vez que cambia el catálogo.
+     ?m=otro-comercio en la dirección muestra el menú de otro comercio. */
+  var NUBE = { url:'https://vrkvfshwlbxpgqtmmdeu.supabase.co', key:'sb_publishable_Q_XkB9-HAtI0v6qjKOY8XQ_F2f1mMKa', slug:'rave' };
+  var hayNube = NUBE.url.indexOf('__') !== 0 && !!window.fetch;
+  var pedido = '';
+  try{ pedido = (new URLSearchParams(location.search).get('m') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40); }catch(e){}
+  var SLUG = pedido || (hayNube ? NUBE.slug : '');
+
+  function valido(d){ return d && d.secciones && d.secciones.length && d.productos; }
   function catalogo(){
     try{
+      /* 1. el catálogo del panel de ESTE dispositivo (si es del mismo comercio) */
       var raw = localStorage.getItem('rave.menu.local');
       if(raw){
         var d = JSON.parse(raw);
-        if(d && d.secciones && d.secciones.length && d.productos) return d;
+        if(valido(d) && (!pedido || d.slug === pedido)) return d;
+      }
+      /* 2. lo último que se bajó de la nube */
+      var nb = localStorage.getItem('rave.menu.nube');
+      if(nb){
+        var n = JSON.parse(nb);
+        if(n && n.slug === SLUG && valido(n.d)) return n.d;
       }
     }catch(e){ /* almacenamiento bloqueado: se usa lo publicado */ }
+    /* 3. el que viene dentro del archivo */
     return MENU_PUBLICADO;
+  }
+  function traerDeLaNube(){
+    if(!hayNube || !SLUG) return;
+    fetch(NUBE.url + '/rest/v1/menus?select=datos&slug=eq.' + encodeURIComponent(SLUG),
+          { headers:{ apikey:NUBE.key }, cache:'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(rows){
+        var d = rows && rows[0] && rows[0].datos;
+        if(!valido(d)) return;
+        var antes = null;
+        try{ antes = localStorage.getItem('rave.menu.nube'); }catch(e){}
+        var nuevo = JSON.stringify({ slug:SLUG, d:d });
+        if(antes === nuevo) return;
+        try{ localStorage.setItem('rave.menu.nube', nuevo); }catch(e){}
+        if(window.RAVE_MENU_RENDER) window.RAVE_MENU_RENDER();
+      })
+      .catch(function(){ /* sin conexión: queda el último que había */ });
   }
 
   var secs = [], prods = [];
@@ -1619,7 +1666,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
 
   function card(p){
     return '<div class="card" data-id="' + esc(p.id) + '" data-name="' + esc(nombreCompleto(p)) +
-      '" data-price="' + (p.precio || 0) + '">' +
+      '" data-price="' + (Number(p.precio) || 0) + '">' +
       (p.img ? '<img loading="lazy" decoding="async" src="' + esc(p.img) + '" alt="' + esc(p.nom) + '">'
              : '<div class="c-noimg" aria-hidden="true"></div>') +
       '<div class="c-name">' + esc(p.nom) + '</div>' +
@@ -1634,7 +1681,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
 
   function fila(p){
     return '<div class="row" data-id="' + esc(p.id) + '" data-name="' + esc(p.nom) +
-      '" data-price="' + (p.precio || 0) + '">' +
+      '" data-price="' + (Number(p.precio) || 0) + '">' +
       '<div class="row-thumb">' +
         (p.img ? '<img loading="lazy" decoding="async" src="' + esc(p.img) + '" alt="' + esc(p.nom) + '">'
                : '<div class="row-noimg"></div>') +
@@ -1650,7 +1697,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
 
   function destacado(p, cat){
     return '<div class="featured" data-cat="' + esc(cat) + '" data-id="' + esc(p.id) +
-      '" data-name="' + esc(p.nom) + '" data-price="' + (p.precio || 0) + '">' +
+      '" data-name="' + esc(p.nom) + '" data-price="' + (Number(p.precio) || 0) + '">' +
       (p.img ? '<img loading="lazy" decoding="async" class="feat-img" src="' + esc(p.img) + '" alt="' + esc(p.nom) + '">' : '') +
       '<div class="info">' +
         '<div class="name">' + esc(p.nom) + '</div>' +
@@ -1727,6 +1774,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
     if(window.RAVE_MENU_REFRESH) window.RAVE_MENU_REFRESH();
     if(window.RAVE_applyHours) window.RAVE_applyHours();
   };
+  traerDeLaNube();
 })();
 
   </script>
@@ -2050,7 +2098,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
         }
         var row = document.createElement('div');
         row.className = 'cp-item';
-        row.innerHTML = '<div class="cp-name">' + it.name + '</div>' +
+        row.innerHTML = '<div class="cp-name">' + String(it.name == null ? '' : it.name).replace(/[&<>"']/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]; }) + '</div>' +
                          '<div class="cp-qty">x' + it.qty + '</div>' +
                          '<div class="cp-line">' + lineTxt + '</div>';
         itemsEl.appendChild(row);
@@ -2744,9 +2792,37 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
     </div>
     <button class="gbtn" type="button" id="g-login-go">Entrar al sistema</button>
     <button class="gbtn alt" type="button" id="g-login-cancel">Volver al menú</button>
+    <button class="glink" type="button" id="g-nube-open">☁ Conectar este dispositivo a la nube</button>
     <p class="gnote">Los datos del comercio se guardan cifrados en este dispositivo
       (AES-256-GCM). La contraseña no se guarda en ninguna parte: es la llave que
       descifra la información.</p>
+  </div>
+
+  <!-- Paso: conectar un dispositivo nuevo a un comercio que ya está en la nube -->
+  <div class="gbox gstep" id="gs-nube">
+    <div class="glogo">☁</div>
+    <h3>Conectar a la nube</h3>
+    <p class="gsub">Para una caja, tablet o celular más. Entrá con el correo que te dio de alta el dueño.</p>
+    <div class="gerr" id="g-nube-err"></div>
+    <div class="gf">
+      <label for="n-email">Correo</label>
+      <input id="n-email" type="email" autocomplete="username" spellcheck="false" maxlength="120">
+    </div>
+    <div class="gf">
+      <label for="n-pass">Contraseña</label>
+      <input id="n-pass" type="password" autocomplete="current-password">
+    </div>
+    <div class="gf">
+      <label for="n-caja">Número de esta caja / equipo</label>
+      <input id="n-caja" type="number" min="1" max="99" value="2" inputmode="numeric">
+      <span class="hint">Cada equipo numera sus tickets aparte: la caja 2 hace 2-1, 2-2… El equipo principal es la 1.</span>
+    </div>
+    <div id="n-coms"></div>
+    <div class="gnote" id="g-nube-prog" aria-live="polite"></div>
+    <button class="gbtn" type="button" id="g-nube-go">Conectar y descargar los datos</button>
+    <button class="gbtn alt" type="button" id="g-nube-back">Volver</button>
+    <p class="gnote">Los datos bajan cifrados y quedan también en este equipo, así se sigue
+      trabajando aunque se corte internet.</p>
   </div>
 
   <!-- Paso: primer uso (asistente de 3 pasos) -->
@@ -2754,6 +2830,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
     <div class="glogo">R</div>
     <h3>Configurar el sistema</h3>
     <p class="gsub">Primera vez en este dispositivo. Son tres pasos y queda listo para vender.</p>
+    <button class="glink" type="button" id="g-nube-open2">☁ ¿El comercio ya está en la nube? Conectar este dispositivo</button>
     <div class="gsteps"><i class="on" id="gsd-1"></i><i id="gsd-2"></i><i id="gsd-3"></i></div>
     <div class="gerr" id="g-setup-err"></div>
 
@@ -2860,6 +2937,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
 
     <span class="pill gold" id="erp-rubro-pill" data-i18n="pill.rubro">—</span>
     <span class="pill" id="erp-caja-pill" title="Estado de la caja">Caja cerrada</span>
+    <button class="pill" type="button" id="erp-nube-pill" style="display:none" title="Sincronización con la nube">☁ Nube</button>
 
     <!-- selector multicomercio -->
     <div class="tsw" id="erp-tsw">
@@ -3710,8 +3788,9 @@ var QR = (function(){
   function save(now){
     if(!S.db || !S.tenant) return;
     if(saveT) clearTimeout(saveT);
-    if(now){ doSave(); return; }
+    if(now){ doSave(); nubeTocar(); return; }
     saveT = setTimeout(doSave, 350);
+    nubeTocar();
   }
   function doSave(){
     saveT = null;
@@ -3744,8 +3823,8 @@ var QR = (function(){
   /* Auditoría: toda acción crítica queda asentada con usuario y hora. */
   function audit(acc, det){
     if(!S.db) return;
-    S.db.audit.push({ ts:Date.now(), u:S.user || '—', acc:acc, det:clean(det, 160) });
-    if(S.db.audit.length > 600) S.db.audit = S.db.audit.slice(-600);
+    S.db.audit.push({ id:uid(), ts:Date.now(), u:S.user || '—', acc:acc, det:clean(det, 160) });
+    nbRecortar('audit', 600);
     save();
   }
 
@@ -3984,7 +4063,8 @@ var QR = (function(){
   }
   function turnoAbierto(){
     var t = S.db.turnos;
-    for(var i=t.length-1;i>=0;i--) if(!t[i].cerrado) return t[i];
+    /* con la nube, cada dispositivo tiene su propia caja */
+    for(var i=t.length-1;i>=0;i--) if(!t[i].cerrado && (!t[i].disp || t[i].disp === miDisp())) return t[i];
     return null;
   }
   function movStock(prodId, delta, motivo){
@@ -3992,7 +4072,7 @@ var QR = (function(){
     if(!p) return;
     p.stock = (p.stock || 0) + delta;
     S.db.mov.push({ id:uid(), ts:Date.now(), prodId:prodId, delta:delta, motivo:clean(motivo, 60), u:S.user });
-    if(S.db.mov.length > 2000) S.db.mov = S.db.mov.slice(-2000);
+    nbRecortar('mov', 2000);
   }
   function ventasDe(desdeTs, hastaTs){
     return S.db.ventas.filter(function(v){
@@ -4205,7 +4285,7 @@ var QR = (function(){
       listo();
       if(!okPlain){ fallo(t, 'Usuario o contraseña incorrectos.'); return; }
       S.dek = null;
-      readDB(t.id, null).then(function(db){ entrar(t, entry, db); })
+      readDB(t.id, null).then(function(db){ S._passTmp = p; entrar(t, entry, db); })
         .catch(function(){ gErr('g-login-err', 'La base de este comercio no se puede leer.'); });
       return;
     }
@@ -4218,6 +4298,7 @@ var QR = (function(){
     }).then(function(db){
       listo();
       if(!db) db = newDB({ nombre:t.nombre, rubro:t.rubro });
+      S._passTmp = p;
       entrar(t, entry, db);
     }).catch(function(){
       listo();
@@ -4236,7 +4317,9 @@ var QR = (function(){
     $('#g-pass').value = '';
   }
   function entrar(t, entry, db){
+    var passNube = S._passTmp; S._passTmp = null;
     t.lock = { f:0, until:0 };
+    t.ultimo = entry.u;
     S.meta.active = t.id; saveMeta();
     S.tenant = t; S.db = db; S.user = entry.u; S.rol = entry.rol;
     S.csrf = b64(rndBytes(16));
@@ -4245,8 +4328,9 @@ var QR = (function(){
     precargarClientes().then(function(){
       gateHide();
       abrirPanel();
+      if(t.nube) nubeArrancar(passNube);
       var r = estadoRespaldo();
-      if(r.avisar){
+      if(r.avisar && !(t.nube && entry.rol !== 'admin')){
         setTimeout(function(){
           toast(r.dias == null ? 'Todavía no hiciste ningún respaldo de la base'
                                : 'Hace ' + r.dias + ' días que no hacés respaldo', 'bad');
@@ -4258,6 +4342,7 @@ var QR = (function(){
     /* Se borra la llave de memoria: sin volver a ingresar la clave, la base
        del dispositivo no se puede leer. */
     save(true);
+    nubeParar();
     S.dek = null; S.db = null; S.user = null; S.rol = null; CLARO = {};
     $('#erp').classList.remove('open');
     D.body.classList.remove('erp-open');
@@ -4278,6 +4363,7 @@ var QR = (function(){
     ['prod','mov','ventas','turnos','gastos','clientes','mesas','mozos','ots','tecnicos','audit','nonces','pagosCta','empleados','fichadas'].forEach(function(k){
       if(!Array.isArray(d[k])) d[k] = [];
     });
+    d.audit.forEach(function(a, i){ if(!a.id) a.id = 'a' + (a.ts || 0).toString(36) + i; });
     migrarCatalogo();
     espejarMenu();
   }
@@ -4303,7 +4389,8 @@ var QR = (function(){
             function(){
               S.meta.active = id; saveMeta();
               salir();
-              $('#g-user').value = 'admin'; $('#g-pass').value = '';
+              var tn = S.meta.tenants.filter(function(x){ return x.id === id; })[0];
+              $('#g-user').value = (tn && tn.ultimo) || 'admin'; $('#g-pass').value = '';
               gateShow('login');
             });
       });
@@ -4340,7 +4427,9 @@ var QR = (function(){
   function exportarRespaldo(legible){
     var payload;
     if(legible){
-      payload = JSON.stringify({ tipo:'rave-respaldo-legible', v:1, ts:Date.now(), comercio:S.tenant.nombre, db:S.db }, null, 1);
+      var copia = {};
+      Object.keys(S.db).forEach(function(k){ if(k !== '_nube') copia[k] = S.db[k]; });   /* la sesión de la nube no viaja */
+      payload = JSON.stringify({ tipo:'rave-respaldo-legible', v:1, ts:Date.now(), comercio:S.tenant.nombre, db:copia }, null, 1);
     } else {
       var raw = lsGet(K_DB + S.tenant.id);
       payload = JSON.stringify({
@@ -4364,6 +4453,10 @@ var QR = (function(){
       try{ data = JSON.parse(fr.result); }
       catch(e){ toast('El archivo no es un respaldo válido', 'bad'); return; }
 
+      if(data.tipo === 'rave-respaldo-legible' && data.db && nubeOn()){
+        toast('Este equipo está conectado a la nube: los datos ya están respaldados ahí. Para restaurar un archivo, primero desconectá el equipo.', 'bad');
+        return;
+      }
       if(data.tipo === 'rave-respaldo-legible' && data.db){
         ask('Restaurar respaldo', 'Se van a reemplazar TODOS los datos del comercio actual por los del archivo. Esto no se puede deshacer.', function(){
           S.db = data.db; migrarDB(); doSave();
@@ -4722,7 +4815,7 @@ var QR = (function(){
         { t:'Cancelar', cls:'ghost' },
         { t:'Abrir caja', cls:'gold', fn:function(box){
             var ini = Math.max(0, toNum($('#f-ini', box).value));
-            S.db.turnos.push({ id:uid(), abierto:Date.now(), cerrado:null, inicial:ini, contado:null, dif:null, u:S.user, movs:[] });
+            S.db.turnos.push({ id:uid(), disp:miDisp(), caja:nombreCaja(), abierto:Date.now(), cerrado:null, inicial:ini, contado:null, dif:null, u:S.user, movs:[] });
             audit('caja.abierta', 'inicial ' + money(ini));
             refresh();
             toast('Caja abierta', 'ok');
@@ -5055,7 +5148,7 @@ var QR = (function(){
       return false;
     }
 
-    var nro = S.db.seq.venta++;
+    var nro = conCaja(S.db.seq.venta++);
     var venta = {
       id:uid(), nro:nro, ts:Date.now(),
       items:items.map(function(i){ return { id:i.id, nom:i.nom, q:i.q, precio:i.precio, costo:i.costo||0 }; }),
@@ -5064,7 +5157,7 @@ var QR = (function(){
       mesaNro: ctx && ctx.mesa ? ctx.mesa.nro : null,
       mozoId: ctx && ctx.mesa ? ctx.mesa.mozoId : null,
       otId: ctx && ctx.ot ? ctx.ot.id : null,
-      fiscal:{ tipo:tipo, cond:cond, doc:doc, ptoVenta:S.db.cfg.ptoVenta, nro:null, cae:null, caeVto:null },
+      fiscal:{ tipo:tipo, cond:cond, doc:doc, ptoVenta:S.db.cfg.ptoVenta, caja:nombreCaja(), nro:null, cae:null, caeVto:null },
       arca: tipo === 'X' ? 'no_fiscal' : 'pendiente',
       estado:'ok'
     };
@@ -5158,7 +5251,7 @@ var QR = (function(){
       dtable({
         icon:'▤', empty:'Todavía no registraste ventas.',
         cols:[
-          { l:'#', k:'nro', v:function(v){ return '<b>' + v.nro + '</b>'; }, srt:function(v){ return v.nro; } },
+          { l:'#', k:'nro', v:function(v){ return '<b>' + v.nro + '</b>'; }, srt:function(v){ return v.ts; } },
           { l:'Fecha', v:function(v){ return fechaCorta(v.ts); }, srt:function(v){ return v.ts; } },
           { l:'Detalle', cls:'hide-m', v:function(v){
               return '<span class="tdm">' + esc(v.items.map(function(i){ return i.q + '× ' + i.nom; }).join(', ').slice(0,70)) + '</span>'; }, sort:false },
@@ -6418,8 +6511,10 @@ var QR = (function(){
         '<button class="btn gold" type="button" id="k-save" style="margin-top:16px">Guardar cambios</button>' +
       '</div>' +
 
+      nbCard() +
+
       /* --- usuarios --- */
-      '<div class="card b6"><div class="c-head"><span class="c-ttl">Usuarios y roles</span>' +
+      (nubeOn() ? nbCardUsuarios() : '<div class="card b6"><div class="c-head"><span class="c-ttl">Usuarios y roles</span>' +
         (S.rol === 'admin' ? '<span class="acts"><button class="btn xs" type="button" id="k-user-add">+ Usuario</button></span>' : '') +
       '</div>' +
         '<div class="rowlist">' + S.tenant.users.map(function(u){
@@ -6432,13 +6527,16 @@ var QR = (function(){
           '<b>Administrador:</b> todo.<br><b>Mostrador:</b> vender, caja, clientes, sellos y Wi-Fi; no ve costos, reportes ni configuración.<br>' +
           '<b>Operador:</b> sólo mesas u órdenes de trabajo.</div></div>' +
         (S.rol === 'admin' ? '<button class="btn" type="button" id="k-pass" style="margin-top:14px">Cambiar mi contraseña</button>' : '') +
-      '</div>' +
+      '</div>') +
 
       /* --- respaldo --- */
       '<div class="card b6"><div class="c-head"><span class="c-ttl">Respaldo de la base</span></div>' +
-        '<div class="note warn"><span class="ic">💾</span><div>Los datos están <b>solo en este dispositivo</b>. ' +
-        'Si se formatea la PC, se borra el navegador o se pierde el celular, se pierden. ' +
-        'Hacé un respaldo seguido y guardalo en un pendrive o en la nube.</div></div>' +
+        (nubeOn()
+          ? '<div class="note ok"><span class="ic">☁</span><div>Los datos están <b>en la nube y en cada equipo conectado</b>. ' +
+            'Igual conviene un respaldo cifrado de vez en cuando, por las dudas.</div></div>'
+          : '<div class="note warn"><span class="ic">💾</span><div>Los datos están <b>solo en este dispositivo</b>. ' +
+            'Si se formatea la PC, se borra el navegador o se pierde el celular, se pierden. ' +
+            'Hacé un respaldo seguido y guardalo en un pendrive o en la nube.</div></div>') +
         '<div class="inline" style="margin-top:14px">' +
           '<button class="btn pri" type="button" id="k-bk-cif">Respaldo cifrado</button>' +
           '<button class="btn" type="button" id="k-bk-leg">Respaldo legible</button>' +
@@ -6511,15 +6609,17 @@ var QR = (function(){
       (S.rol === 'admin'
         ? '<div class="card b12"><div class="c-head"><span class="c-ttl">Zona de riesgo</span></div>' +
           '<div class="inline">' +
-            '<button class="btn dang" type="button" id="k-reset-demo">Borrar ventas y movimientos</button>' +
+            (nubeOn() ? '' : '<button class="btn dang" type="button" id="k-reset-demo">Borrar ventas y movimientos</button>') +
             '<button class="btn dang" type="button" id="k-reset-all">Borrar este comercio del dispositivo</button>' +
           '</div>' +
           '<div class="tiny muted" style="margin-top:10px">Lo primero deja el catálogo y los clientes, y borra el historial. ' +
-          'Lo segundo borra todo, incluida la base cifrada. Hacé un respaldo antes.</div></div>'
+          (nubeOn() ? 'Borra la copia de ESTE equipo; los datos siguen en la nube y en los otros equipos.'
+                    : 'Lo segundo borra todo, incluida la base cifrada. Hacé un respaldo antes.') + '</div></div>'
         : '');
 
     /* --- eventos --- */
     $('#k-save').addEventListener('click', guardarConfig);
+    nbWireCard();
     var ua = $('#k-user-add');
     if(ua) ua.addEventListener('click', nuevoUsuario);
     var kp = $('#k-pass');
@@ -6555,6 +6655,7 @@ var QR = (function(){
     var ra = $('#k-reset-all');
     if(ra) ra.addEventListener('click', function(){
       ask('Borrar el comercio', 'Se borra la base cifrada de "' + c.nombre + '" de este dispositivo. Esto NO se puede deshacer.', function(){
+        nubeParar();
         try{ localStorage.removeItem(K_DB + S.tenant.id); }catch(e){}
         S.meta.tenants = S.meta.tenants.filter(function(t){ return t.id !== S.tenant.id; });
         S.meta.active = S.meta.tenants.length ? S.meta.tenants[0].id : null;
@@ -6682,6 +6783,13 @@ var QR = (function(){
             var o = $('#cp-old', box).value, n = $('#cp-new', box).value, n2 = $('#cp-new2', box).value;
             if(n.length < 8){ toast('La contraseña nueva necesita al menos 8 caracteres', 'bad'); return false; }
             if(n !== n2){ toast('Las contraseñas nuevas no coinciden', 'bad'); return false; }
+            if(nubeOn() && S.user === S.tenant.nube.email){
+              nbCambiarClave(o, n, function(err){
+                if(err){ toast(err.message, 'bad'); return; }
+                closeModal(); toast('Contraseña cambiada en todos los equipos', 'ok');
+              });
+              return false;
+            }
             var entry = S.tenant.users.filter(function(x){ return x.u === S.user; })[0];
             unwrapDEK(entry, o).then(function(){
               return SUB.exportKey('raw', S.dek);
@@ -6740,6 +6848,8 @@ var QR = (function(){
   function slugProducto(nom){
     var base = slug(nom).slice(0, 28) || 'prod';
     var id = base, n = 2;
+    /* con la nube, otro equipo puede crear uno igual al mismo tiempo */
+    if(nubeOn()) id = base + '-' + Math.random().toString(36).slice(2, 6);
     while(prodById(id)) id = base + '-' + (n++);
     return id;
   }
@@ -6805,6 +6915,7 @@ var QR = (function(){
           return { id:p.id, cat:p.cat, grupo:p.grupo || '', nom:p.nom, sub:p.sub || '',
                    desc:p.desc || '', precio:p.precio, img:p.img || '', destacado:!!p.destacado };
         }),
+      slug: S.db.cfg.slug || '',
       ts: Date.now()
     };
   }
@@ -7319,7 +7430,7 @@ var QR = (function(){
     var tipo = estaDentro(emp.id) ? 'salida' : 'entrada';
     S.db.fichadas.push({ id:uid(), empId:emp.id, ts:Date.now(), tipo:tipo,
                          metodo:metodo || 'manual', u:S.user || 'terminal' });
-    if(S.db.fichadas.length > 5000) S.db.fichadas = S.db.fichadas.slice(-5000);
+    nbRecortar('fichadas', 5000);
     audit('fichaje.' + tipo, emp.nom + ' · ' + metodo);
     save();
     return tipo;
@@ -7763,6 +7874,969 @@ var QR = (function(){
   }
 
   /* =======================================================================
+     25. NUBE · varios dispositivos con los mismos datos (Supabase)
+     ---------------------------------------------------------------------
+     Cómo funciona, en criollo:
+       · Cada dispositivo sigue teniendo su base completa y cifrada: si se
+         corta internet, se sigue vendiendo igual.
+       · Cada 15 segundos (y apenas se guarda algo) el dispositivo sube lo que
+         cambió y baja lo que cambiaron los demás.
+       · El stock lo calcula el servidor sumando movimientos: dos cajas que
+         venden la misma botella a la vez restan las dos.
+       · Teléfonos, correos y DNI viajan cifrados con la llave del comercio.
+         Esa llave la tiene cada usuario envuelta con SU contraseña: la nube
+         guarda la caja cerrada, nunca la llave.
+       · Cada dispositivo tiene su propia caja (turno) y su propia numeración
+         de tickets ("2-15" es el ticket 15 de la caja 2).
+     LÍMITE: si dos personas editan EL MISMO registro a la vez (la misma mesa,
+     el mismo cliente), queda la última versión guardada.
+     ======================================================================= */
+  var NUBE_DEF = { url:'https://vrkvfshwlbxpgqtmmdeu.supabase.co', key:'sb_publishable_Q_XkB9-HAtI0v6qjKOY8XQ_F2f1mMKa', slug:'rave' };
+  function nubeDisponible(){ return NUBE_DEF.url.indexOf('__') !== 0 && !!window.fetch; }
+
+  /* Colecciones que viajan. del: si se borra acá, se borra en todos.
+     mod: se edita pero no se borra (lo viejo se recorta sólo en el equipo).
+     add: se escribe una vez y no cambia más. */
+  var NB_COLS = {
+    prod:'del', mov:'add', ventas:'mod', turnos:'mod', gastos:'del', clientes:'del', pagosCta:'mod',
+    mesas:'del', mozos:'del', ots:'del', tecnicos:'del', empleados:'del', fichadas:'mod', audit:'add'
+  };
+  var NB_ORDEN = { mov:'ts', ventas:'ts', fichadas:'ts', audit:'ts', pagosCta:'ts', gastos:'ts', turnos:'abierto' };
+
+  var NB = { gen:0, vivo:function(){ return false; }, conn:null, estado:'off', timer:null, tT:null, corriendo:null, otra:false, silencio:false,
+             ultimo:null, err:null, pend:0, redibujar:false, menuErr:null, rechazos:null, fuera:false };
+
+  function nubeOn(){ return !!(S.tenant && S.tenant.nube && S.db); }
+  /* recorta lo viejo de una lista, pero nunca lo que todavía no subió a la nube */
+  function nbRecortar(col, max){
+    var arr = S.db[col];
+    if(!arr || arr.length <= max) return;
+    if(!nubeOn() || !S.db._nube){ S.db[col] = arr.slice(-max); return; }
+    var h = S.db._nube.h || {}, sobran = arr.length - max, out = [];
+    for(var i=0;i<arr.length;i++){
+      var v = h[col + '/' + arr[i].id];
+      if(sobran > 0 && v && v !== 'H'){ sobran--; continue; }
+      out.push(arr[i]);
+    }
+    S.db[col] = out;
+  }
+  function miDisp(){ return (S.tenant && S.tenant.nube) ? S.tenant.nube.disp : null; }
+  function prefCaja(){ return (S.tenant && S.tenant.nube && S.tenant.nube.pref) || ''; }
+  function conCaja(n){ var p = prefCaja(); return p ? p + n : n; }
+  function nombreCaja(){ return (S.tenant && S.tenant.nube && S.tenant.nube.caja) || null; }
+
+  /* ---------- HTTP ---------- */
+  var NB_MSG = {
+    'Invalid login credentials':'Correo o contraseña incorrectos.',
+    'User already registered':'Ya existe una cuenta con ese correo.',
+    'Email not confirmed':'Falta confirmar el correo. En Supabase: Authentication → Sign In / Providers → Email → desactivá "Confirm email".',
+    'Password should be at least 6 characters':'La contraseña necesita al menos 6 caracteres.',
+    'Invalid API key':'La clave publicable de la nube no es válida.'
+  };
+  function nbApi(conn, path, o){
+    o = o || {};
+    var h = { 'apikey':conn.key, 'Content-Type':'application/json' };
+    if(conn.ses && conn.ses.access && !o.anon) h['Authorization'] = 'Bearer ' + conn.ses.access;
+    if(o.prefer) h['Prefer'] = o.prefer;
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var to = ctrl ? setTimeout(function(){ ctrl.abort(); }, o.timeout || 30000) : null;
+    return fetch(conn.url + path, {
+      method:o.method || 'GET', headers:h, cache:'no-store',
+      body:o.body != null ? JSON.stringify(o.body) : undefined,
+      signal:ctrl ? ctrl.signal : undefined
+    }).then(function(r){
+      if(to) clearTimeout(to);
+      return r.text().then(function(t){
+        var j = null;
+        try{ j = t ? JSON.parse(t) : null; }catch(e){ j = t; }
+        if(!r.ok){
+          var m = (j && (j.msg || j.message || j.error_description || j.error)) || ('Error ' + r.status);
+          if(j && j.code === 'user_already_exists') m = 'User already registered';
+          if(j && /^(PGRST202|PGRST205|42P01|42883)$/.test(String(j.code))) m = 'La nube no está lista: falta correr el script 02-sincronizacion.sql en el SQL Editor de Supabase.';
+          var e = new Error(NB_MSG[m] || m);
+          e.status = r.status; e.body = j;
+          if(r.status === 401 && /jwt|token/i.test(String(m))) e.jwt = true;
+          throw e;
+        }
+        return j;
+      });
+    }, function(){
+      if(to) clearTimeout(to);
+      var e = new Error('Sin conexión con la nube'); e.red = true; throw e;
+    });
+  }
+  function nbSes(r){
+    var u = r.user || {};
+    return { access:r.access_token, refresh:r.refresh_token,
+             exp:r.expires_at ? r.expires_at * 1000 : Date.now() + (r.expires_in || 3600) * 1000,
+             uid:u.id, email:u.email };
+  }
+  function nbRefrescar(conn){
+    if(conn.refrescando) return conn.refrescando;
+    if(!conn.ses || !conn.ses.refresh){
+      var e0 = new Error('Hace falta volver a ingresar con el correo y la contraseña de la nube'); e0.sesion = true;
+      return Promise.reject(e0);
+    }
+    conn.refrescando = nbApi(conn, '/auth/v1/token?grant_type=refresh_token',
+      { method:'POST', anon:true, body:{ refresh_token:conn.ses.refresh } })
+      .then(function(r){
+        conn.ses = nbSes(r); conn.refrescando = null;
+        if(conn.onSes) conn.onSes(conn.ses);
+        return conn.ses;
+      }, function(e){
+        conn.refrescando = null;
+        if(!e.red){ e.sesion = true; e.message = 'La sesión de la nube venció: cerrá sesión y volvé a entrar con tu correo'; }
+        throw e;
+      });
+    return conn.refrescando;
+  }
+  function nbReq(conn, path, o){
+    o = o || {};
+    var antes = (!conn.ses || !conn.ses.access || conn.ses.exp - Date.now() < 60000) ? nbRefrescar(conn) : Promise.resolve();
+    return antes.then(function(){ return nbApi(conn, path, o); }).catch(function(e){
+      if(e.status === 401 && !o._re){
+        o._re = true;
+        conn.ses.exp = 0;
+        return nbRefrescar(conn).then(function(){ return nbApi(conn, path, o); });
+      }
+      throw e;
+    });
+  }
+  function nbRpc(conn, fn, args){ return nbReq(conn, '/rest/v1/rpc/' + fn, { method:'POST', body:args || {} }); }
+
+  /* ---------- huella de cada registro (para saber qué cambió) ---------- */
+  function nbHash(col, o){
+    var s = JSON.stringify(o, function(k, v){
+      if(this === o && ((col === 'prod' && k === 'stock') || k === '_h')) return undefined;
+      return v;
+    }) || '';
+    var h = 0x811c9dc5;
+    for(var i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(36) + '.' + s.length.toString(36);
+  }
+  function nbEstadoLocal(){
+    if(!S.db._nube) S.db._nube = { h:{}, cursor:null };
+    if(!S.db._nube.h) S.db._nube.h = {};
+    return S.db._nube;
+  }
+  /* el propio guardado de la sincronización no dispara otra sincronización */
+  function nbGuardar(){ NB.silencio = true; save(); NB.silencio = false; }
+  /* si mientras se sincronizaba alguien salió o cambió de comercio, se corta acá */
+  function nbSeguir(){
+    if(NB.vivo()) return;
+    var e = new Error('sincronización cancelada'); e.cancelado = true; throw e;
+  }
+  function nubeTocar(){
+    if(!nubeOn() || NB.silencio || !NB.conn || NB.fuera) return;
+    if(NB.tT) clearTimeout(NB.tT);
+    NB.tT = setTimeout(function(){ NB.tT = null; nubeCiclo(); }, 1500);
+  }
+
+  /* ---------- SUBIR ---------- */
+  function nbPendientes(){
+    var db = S.db, h = nbEstadoLocal().h, out = [], vistos = {};
+    Object.keys(NB_COLS).forEach(function(col){
+      var arr = db[col] || [], modo = NB_COLS[col];
+      for(var i=0;i<arr.length;i++){
+        var it = arr[i];
+        if(!it || it.id == null) continue;
+        var id = String(it.id), k = col + '/' + id;
+        vistos[k] = 1;
+        if(modo === 'add'){
+          if(!h[k]) out.push({ c:col, id:id, d:it, k:k, hs:'1' });
+          else if(h[k] === 'H') out.push({ c:col, id:id, d:it, k:k, hs:'1', hist:true });
+          continue;
+        }
+        var hs = nbHash(col, it);
+        if(h[k] !== hs) out.push({ c:col, id:id, d:it, k:k, hs:hs });
+      }
+    });
+    var hc = nbHash('cfg', db.cfg);
+    if(h['cfg/main'] !== hc) out.push({ c:'cfg', id:'main', d:db.cfg, k:'cfg/main', hs:hc });
+    Object.keys(h).forEach(function(k){
+      if(vistos[k] || k === 'cfg/main') return;
+      var col = k.slice(0, k.indexOf('/'));
+      if(NB_COLS[col] === 'del') out.push({ c:col, id:k.slice(col.length + 1), d:{}, x:true, k:k, hs:null });
+      else delete h[k];   /* recortado en este equipo: no es un borrado */
+    });
+    /* primero los productos y después los movimientos (el servidor igual lo ordena) */
+    out.sort(function(a, b){ return (a.c === 'mov') - (b.c === 'mov'); });
+    return out;
+  }
+  function nbSubir(){
+    var cambios = nbPendientes();
+    NB.pend = cambios.length;
+    if(!cambios.length) return Promise.resolve();
+    var lotes = [], lote = [], peso = 0;
+    cambios.forEach(function(c){
+      var s = JSON.stringify(c.d).length + 60;
+      if(lote.length && (lote.length >= 200 || peso + s > 600000)){ lotes.push(lote); lote = []; peso = 0; }
+      lote.push(c); peso += s;
+    });
+    if(lote.length) lotes.push(lote);
+    var nb = S.tenant.nube, p = Promise.resolve();
+    lotes.forEach(function(l){
+      p = p.then(function(){
+        return nbRpc(NB.conn, 'sincronizar', {
+          p_comercio:nb.comercio, p_dispositivo:nb.caja || nb.disp,
+          p_cambios:l.map(function(c){
+            var it = { c:c.c, id:c.id, d:c.d };
+            if(c.x) it.x = true;
+            if(c.hist) it.h = true;
+            return it;
+          })
+        }).then(function(r){
+          nbSeguir();
+          var h = nbEstadoLocal().h;
+          l.forEach(function(c){ if(c.hs === null) delete h[c.k]; else h[c.k] = c.hs; });
+          NB.pend = Math.max(0, NB.pend - l.length);
+          nbGuardar();
+          nbPintar();
+          if(r && r.rechazos && r.rechazos.length) return nbRestaurar(r.rechazos);
+        });
+      });
+    });
+    return p;
+  }
+
+  /* Lo que la nube rechazó vuelve a quedar como está en la nube (si no,
+     este equipo y los demás quedarían distintos para siempre). */
+  function nbRestaurar(rech){
+    NB.rechazos = rech;
+    audit('nube.rechazo', rech.map(function(x){ return (x.c || '?') + ':' + x.motivo; }).join(', ').slice(0, 150));
+    toast('La nube no aceptó ' + rech.length + ' cambio' + (rech.length > 1 ? 's' : '') + ': ' + rech[0].motivo, 'bad');
+    var nb = S.tenant.nube, ch = { any:false }, pend = nbMovPendientes(), p = Promise.resolve();
+    rech.slice(0, 50).forEach(function(x){
+      if(!x.c || !NB_COLS[x.c] && x.c !== 'cfg') return;
+      p = p.then(function(){
+        return nbReq(NB.conn, '/rest/v1/registros?select=coleccion,id,datos,borrado,actualizado&comercio_id=eq.' + nb.comercio +
+                     '&coleccion=eq.' + encodeURIComponent(x.c) + '&id=eq.' + encodeURIComponent(x.id));
+      }).then(function(rows){
+        nbSeguir();
+        var k = x.c + '/' + x.id, h = nbEstadoLocal().h;
+        delete h[k];
+        if(rows && rows[0]){ nbAplicar(rows[0], pend, ch); return; }
+        if(x.c === 'cfg'){ h[k] = nbHash('cfg', S.db.cfg); return; }
+        var arr = S.db[x.c] || [], i = nbBuscar(arr, String(x.id));
+        if(i >= 0){ arr.splice(i, 1); ch.any = ch[x.c] = true; }
+      });
+    });
+    return p.then(function(){ if(ch.any) nbDespuesDeBajar(ch); else nbGuardar(); });
+  }
+
+  /* ---------- BAJAR ---------- */
+  function nbMovPendientes(){
+    var h = nbEstadoLocal().h, p = {};
+    (S.db.mov || []).forEach(function(m){
+      if(!h['mov/' + m.id]) p[m.prodId] = (p[m.prodId] || 0) + (Number(m.delta) || 0);
+    });
+    return p;
+  }
+  function nbBuscar(arr, id){
+    for(var i=0;i<arr.length;i++) if(arr[i] && String(arr[i].id) === id) return i;
+    return -1;
+  }
+  function nbAplicar(r, pend, ch){
+    var col = r.coleccion, id = String(r.id), k = col + '/' + id, h = nbEstadoLocal().h, d = r.datos || {}, hs;
+    if(col === 'cfg'){
+      if(r.borrado) return;
+      hs = nbHash('cfg', d);
+      if(h[k] === hs) return;
+      if(h[k] !== undefined && nbHash('cfg', S.db.cfg) !== h[k]) return;   /* cambio local sin subir: gana el local */
+      S.db.cfg = d; h[k] = hs; ch.any = ch.cfg = true;
+      return;
+    }
+    if(!NB_COLS[col]) return;   /* algo de una versión más nueva: se ignora */
+    var arr = S.db[col] || (S.db[col] = []);
+    var idx = nbBuscar(arr, id), local = idx >= 0 ? arr[idx] : null;
+    if(r.borrado){
+      if(idx >= 0){ arr.splice(idx, 1); ch.any = ch[col] = true; }
+      delete h[k];
+      return;
+    }
+    if(NB_COLS[col] === 'add'){
+      if(idx < 0){ delete d._h; arr.push(d); ch.any = ch[col] = true; }
+      h[k] = '1';
+      return;
+    }
+    hs = nbHash(col, d);
+    var pendienteLocal = local && h[k] !== undefined && nbHash(col, local) !== h[k];
+    if(col === 'prod'){
+      var st = (Number(d.stock) || 0) + (pend[id] || 0);
+      if(local && (pendienteLocal || h[k] === hs)){
+        if(local.stock !== st){ local.stock = st; ch.any = ch.prod = true; }
+        return;
+      }
+      d.stock = st;
+    } else {
+      if(local && h[k] === hs) return;
+      if(pendienteLocal) return;
+    }
+    if(idx >= 0) arr[idx] = d; else arr.push(d);
+    h[k] = hs; ch.any = ch[col] = true;
+  }
+  function nbBajar(){
+    var n = nbEstadoLocal(), nb = S.tenant.nube;
+    var desde = n.cursor ? new Date(Date.parse(n.cursor) - 30000).toISOString() : null;
+    var vistos = {}, ch = { any:false }, pend = nbMovPendientes(), cursor = n.cursor;
+    function pagina(gte, vuelta){
+      var q = '/rest/v1/registros?select=coleccion,id,datos,borrado,actualizado&comercio_id=eq.' + nb.comercio +
+              '&order=actualizado.asc,coleccion.asc,id.asc&limit=1000' + (gte ? '&actualizado=gte.' + encodeURIComponent(gte) : '');
+      return nbReq(NB.conn, q).then(function(rows){
+        nbSeguir();
+        var nuevos = 0;
+        (rows || []).forEach(function(r){
+          var key = r.coleccion + '/' + r.id + '@' + r.actualizado;
+          if(vistos[key]) return;
+          vistos[key] = 1; nuevos++;
+          nbAplicar(r, pend, ch);
+          cursor = r.actualizado;
+        });
+        if(rows && rows.length === 1000 && nuevos && vuelta < 400){
+          if(NB.progreso) NB.progreso(Object.keys(vistos).length);
+          return pagina(rows[rows.length - 1].actualizado, vuelta + 1);
+        }
+      });
+    }
+    return pagina(desde, 0).then(function(){
+      n.cursor = cursor;
+      if(ch.any) nbDespuesDeBajar(ch);
+      else nbGuardar();
+      return ch;
+    });
+  }
+  function nbDespuesDeBajar(ch){
+    Object.keys(NB_ORDEN).forEach(function(col){
+      if(!ch[col] || !S.db[col]) return;
+      var f = NB_ORDEN[col];
+      S.db[col].sort(function(a, b){ return (a[f] || 0) - (b[f] || 0); });
+    });
+    if(ch.mov) nbRecortar('mov', 2000);
+    if(ch.audit) nbRecortar('audit', 1000);
+    if(ch.fichadas) nbRecortar('fichadas', 5000);
+    if(ch.cfg){
+      S.tenant.nombre = S.db.cfg.nombre || S.tenant.nombre;
+      S.tenant.rubro = S.db.cfg.rubro || S.tenant.rubro;
+      saveMeta();
+    }
+    if(ch.prod || ch.cfg){ try{ espejarMenu(); }catch(e){} }
+    nbGuardar();
+    var listo = (ch.clientes || ch.empleados) ? precargarClientes() : Promise.resolve();
+    listo.then(function(){ NB.redibujar = true; nbRedibujar(); });
+  }
+  /* se redibuja la pantalla sólo si nadie está escribiendo ni tiene un cuadro abierto */
+  function nbRedibujar(){
+    if(!S.db || !$('#erp').classList.contains('open')) { NB.redibujar = false; return; }
+    var a = D.activeElement;
+    if($('#erp-modal').classList.contains('open')) return;
+    if(a && a.closest && a.closest('#erp') && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+    NB.redibujar = false;
+    renderShell();
+    if(R[S.sec]) R[S.sec]();
+  }
+
+  /* ---------- MENÚ PÚBLICO ---------- */
+  function nbMenu(){
+    var c = S.db.cfg;
+    if(S.rol !== 'admin' || !c.slug) return Promise.resolve();
+    var pub = catalogoPublico();
+    delete pub.ts;
+    var hs = nbHash('menu', pub) + '|' + c.slug, n = nbEstadoLocal();
+    if(n.menuH === hs) return Promise.resolve();
+    pub.ts = Date.now();
+    return nbReq(NB.conn, '/rest/v1/menus?on_conflict=comercio_id', {
+      method:'POST', prefer:'resolution=merge-duplicates,return=minimal',
+      body:{ comercio_id:S.tenant.nube.comercio, slug:c.slug, datos:pub, actualizado:new Date().toISOString() }
+    }).then(function(){
+      nbSeguir();
+      n.menuH = hs; NB.menuErr = null; nbGuardar();
+    }, function(e){
+      if(e.red || e.sesion) throw e;
+      NB.menuErr = (e.status === 409) ? 'La dirección "' + c.slug + '" ya la usa otro comercio: elegí otra' : e.message;
+      n.menuH = hs;   /* no se reintenta hasta que algo cambie */
+    });
+  }
+  function urlMenu(){
+    var base = (S.db.cfg.menuUrl || 'https://raveholding.github.io/menu-rave/').split('?')[0].split('#')[0];
+    return base + (S.db.cfg.slug && S.db.cfg.slug !== NUBE_DEF.slug ? '?m=' + S.db.cfg.slug : '');
+  }
+
+  /* ---------- CICLO ---------- */
+  function nubeCiclo(){
+    if(!nubeOn() || !NB.conn || NB.fuera) return Promise.resolve();
+    if(NB.corriendo){ NB.otra = true; return NB.corriendo; }
+    var gen = NB.gen, db = S.db;
+    NB.vivo = function(){ return NB.gen === gen && S.db === db; };
+    NB.pend = nbPendientes().length;
+    nbPintar('sync');
+    NB.corriendo = nbRolVigente().then(nbSubir).then(nbBajar).then(nbMenu).then(function(){
+      NB.ultimo = Date.now(); NB.err = null;
+      nbPintar('ok');
+    }).catch(function(e){
+      if(e.cancelado || !NB.vivo()) return;
+      NB.err = e;
+      if(e.status === 403 || e.status === 42501){ e.message = 'Este usuario no tiene permiso en el comercio de la nube'; }
+      nbPintar(e.red ? 'sinred' : (e.sesion ? 'sinsesion' : 'error'));
+    }).then(function(){
+      NB.corriendo = null;
+      if(NB.otra){ NB.otra = false; nubeTocar(); }
+    });
+    return NB.corriendo;
+  }
+  function nbConn(nb){
+    return {
+      url:nb.url, key:nb.key,
+      ses:S.db._nube && S.db._nube.refresh ? { access:'', refresh:S.db._nube.refresh, exp:0, uid:nb.uid } : null,
+      onSes:function(s){ if(S.db && S.db._nube){ S.db._nube.refresh = s.refresh; nbGuardar(); } }
+    };
+  }
+  /* Se llama al entrar al panel. pass: la contraseña que se acaba de escribir
+     (si es la de la cuenta de la nube, se usa para abrir una sesión nueva). */
+  function nubeArrancar(pass){
+    nubeParar();
+    if(!nubeOn()) return Promise.resolve();
+    var nb = S.tenant.nube;
+    nbEstadoLocal();
+    NB.fuera = false;
+    NB.conn = nbConn(nb);
+    var p = Promise.resolve();
+    /* quien entra con su correo pasa a ser la sesión de este equipo */
+    if(pass && /@/.test(S.user || '')){
+      p = nbApi(NB.conn, '/auth/v1/token?grant_type=password', { method:'POST', anon:true, body:{ email:S.user, password:pass } })
+        .then(function(r){
+          NB.conn.ses = nbSes(r); NB.conn.onSes(NB.conn.ses);
+          if(nb.email !== S.user){ nb.email = S.user; nb.uid = NB.conn.ses.uid; saveMeta(); }
+        })
+        .catch(function(){ /* sin red o clave cambiada en otro equipo: sigue con la sesión guardada */ });
+    }
+    NB.timer = setInterval(function(){
+      if(NB.redibujar) nbRedibujar();
+      nubeCiclo();
+    }, 15000);
+    nbPintar('sync');
+    return p.then(nubeCiclo).catch(function(e){
+      NB.err = e; nbPintar(e.red ? 'sinred' : (e.sesion ? 'sinsesion' : 'error'));
+    });
+  }
+  function nubeParar(){
+    NB.gen++;
+    if(NB.timer) clearInterval(NB.timer);
+    if(NB.tT) clearTimeout(NB.tT);
+    NB.timer = null; NB.tT = null; NB.conn = null; NB.err = null; NB.redibujar = false;
+    nbPintar('off');
+  }
+  /* El rol lo manda la nube: si el dueño te cambió el rol o te quitó, se refleja acá */
+  function nbRolVigente(){
+    var nb = S.tenant.nube;
+    return nbRpc(NB.conn, 'mis_comercios_info', {}).then(function(lista){
+      var yo = (lista || []).filter(function(c){ return c.id === nb.comercio; })[0];
+      if(!yo){
+        /* el dueño quitó a esta cuenta: deja de sincronizar y esa cuenta ya
+           no puede abrir la copia de este equipo */
+        NB.fuera = true;
+        var quien = nb.email;
+        if(S.user === quien && S.rol !== 'admin'){
+          S.tenant.users = S.tenant.users.filter(function(u){ return u.u !== quien; });
+          saveMeta();
+          setTimeout(function(){
+            salir();
+            toast('El dueño quitó el acceso de ' + quien + ' a este comercio', 'bad');
+          }, 50);
+        }
+        var e = new Error('La cuenta ' + quien + ' ya no tiene acceso al comercio en la nube.');
+        throw e;
+      }
+      if(S.user === nb.email && yo.rol !== S.rol){
+        var entry = S.tenant.users.filter(function(u){ return u.u === S.user; })[0];
+        if(entry) entry.rol = yo.rol;
+        S.rol = yo.rol; saveMeta();
+        audit('nube.rol', 'el dueño cambió el rol a ' + yo.rol);
+        toast('Tu rol cambió a ' + (ROL_NOM[yo.rol] || yo.rol), 'ok');
+        renderShell(); go(can(S.sec) ? S.sec : 'dash');
+      }
+    });
+  }
+
+  /* ---------- INDICADOR EN LA BARRA ---------- */
+  function nbPintar(estado){
+    if(estado) NB.estado = estado;
+    var p = $('#erp-nube-pill');
+    if(!p) return;
+    if(!nubeOn()){ p.style.display = 'none'; return; }
+    p.style.display = '';
+    var t = { off:'Nube', sync:'Sincronizando…', ok:'Nube al día', sinred:'Sin conexión', sinsesion:'Volvé a ingresar', error:'Nube con error' }[NB.estado] || 'Nube';
+    if(NB.estado === 'sinred' && NB.pend) t += ' · ' + NB.pend + ' por subir';
+    p.innerHTML = '☁<span class="nb-tx"> ' + esc(t) + '</span>';
+    p.className = 'pill ' + ({ ok:'ok', sync:'', sinred:'warn', sinsesion:'bad', error:'bad', off:'' }[NB.estado] || '');
+    p.title = NB.err ? NB.err.message : (NB.ultimo ? 'Última sincronización: ' + fechaCorta(NB.ultimo) : 'Sincronización con la nube');
+    var st = $('#nb-estado');
+    if(st) st.innerHTML = nbEstadoHTML();
+  }
+  function nbEstadoHTML(){
+    var e = NB.err ? '<div class="tiny" style="color:var(--p-bad);margin-top:6px">' + esc(NB.err.message) + '</div>' : '';
+    return '<span class="' + (p_cls()) + '">' + esc($('#erp-nube-pill') ? $('#erp-nube-pill').textContent : '') + '</span>' + e;
+    /* (el texto del indicador de la barra es el mismo que se muestra acá) */
+    function p_cls(){ return 'pill ' + ({ ok:'ok', sinred:'warn', sinsesion:'bad', error:'bad' }[NB.estado] || ''); }
+  }
+
+  /* =======================================================================
+     VINCULAR: el primer equipo sube su comercio a la nube
+     ======================================================================= */
+  function nubeVincularModal(){
+    if(SIN_CIFRADO){ toast('Este navegador no permite cifrar: no se puede usar la nube', 'bad'); return; }
+    if(!nubeDisponible()){ toast('Esta copia del sistema no tiene configurada la nube', 'bad'); return; }
+    modal({
+      title:'Conectar el comercio a la nube',
+      sub:'Este equipo sube sus datos y los demás dispositivos se conectan después',
+      body:
+        '<div class="note info"><span class="ic">☁</span><div>Vas a entrar con una cuenta de correo. ' +
+        '<b>Esa misma contraseña</b> envuelve la llave que cifra los datos: anotála, porque sin ella los datos sensibles no se pueden leer en un equipo nuevo.</div></div>' +
+        '<div class="grid-f" style="margin-top:14px">' +
+          '<div class="f"><label for="nv-email">Correo</label><input class="inp" id="nv-email" type="email" autocomplete="username" maxlength="120"></div>' +
+          '<div class="f"><label for="nv-pass">Contraseña de la nube</label><input class="inp" id="nv-pass" type="password" autocomplete="current-password"></div>' +
+        '</div>' +
+        '<label class="chk" style="margin-top:12px"><input type="checkbox" id="nv-nueva"><span>Todavía no tengo cuenta: crearla con este correo</span></label>' +
+        '<div id="nv-res" style="margin-top:12px"></div>',
+      buttons:[
+        { t:'Cancelar', cls:'ghost' },
+        { t:'Conectar', cls:'gold', fn:function(box){
+            var email = clean($('#nv-email', box).value, 120).toLowerCase(), pass = $('#nv-pass', box).value;
+            if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('Revisá el correo', 'bad'); return false; }
+            if(pass.length < 8){ toast('La contraseña necesita al menos 8 caracteres', 'bad'); return false; }
+            var res = $('#nv-res', box);
+            res.innerHTML = '<div class="note"><span class="ic">⏳</span><div>Conectando…</div></div>';
+            nubeVincular({ email:email, pass:pass, nueva:$('#nv-nueva', box).checked }, function(txt){
+              res.innerHTML = '<div class="note"><span class="ic">⏳</span><div>' + esc(txt) + '</div></div>';
+            }).then(function(r){
+              if(r && r.elegir){ closeModal(); nbElegirComercio(r, email, pass); return; }
+              closeModal();
+              refresh();
+              toast('Comercio conectado a la nube', 'ok');
+            }).catch(function(e){
+              res.innerHTML = '<div class="note bad"><span class="ic">⚠</span><div>' + esc(e.message) + '</div></div>';
+            });
+            return false;
+          } }
+      ]
+    });
+  }
+  function nbElegirComercio(r, email, pass){
+    modal({
+      title:'¿Qué comercio de la nube es este?',
+      sub:'Tu cuenta ya administra estos comercios',
+      body:'<div class="rowlist">' + r.lista.map(function(c){
+          return '<div class="r"><span class="nm"><b>' + esc(c.nombre) + '</b><span class="mt"> · ' + esc(RUBRO_NOM[c.rubro] || c.rubro) + '</span></span>' +
+                 '<button class="btn xs gold" type="button" data-nvc="' + esc(c.id) + '">Usar este</button></div>';
+        }).join('') + '</div>' +
+        '<button class="btn" type="button" id="nvc-nuevo" style="margin-top:14px">+ Crear uno nuevo en la nube</button>' +
+        '<div id="nvc-res" style="margin-top:12px"></div>',
+      buttons:[{ t:'Cancelar', cls:'ghost' }],
+      onOpen:function(box){
+        function seguir(id){
+          $('#nvc-res', box).innerHTML = '<div class="note"><span class="ic">⏳</span><div>Subiendo…</div></div>';
+          nubeVincular({ email:email, pass:pass, comercio:id, conn:r.conn }, function(t){
+            $('#nvc-res', box).innerHTML = '<div class="note"><span class="ic">⏳</span><div>' + esc(t) + '</div></div>';
+          }).then(function(){
+            closeModal(); refresh(); toast('Comercio conectado a la nube', 'ok');
+          }).catch(function(e){
+            $('#nvc-res', box).innerHTML = '<div class="note bad"><span class="ic">⚠</span><div>' + esc(e.message) + '</div></div>';
+          });
+        }
+        $$('[data-nvc]', box).forEach(function(b){ b.addEventListener('click', function(){ seguir(b.getAttribute('data-nvc')); }); });
+        $('#nvc-nuevo', box).addEventListener('click', function(){ seguir('nuevo'); });
+      }
+    });
+  }
+  /* o: { email, pass, nueva, comercio ('nuevo' | id), conn } */
+  function nubeVincular(o, aviso){
+    aviso = aviso || function(){};
+    var conn = o.conn || { url:NUBE_DEF.url, key:NUBE_DEF.key, ses:null };
+    var comercioId = null, rol = 'admin';
+    var p = conn.ses ? Promise.resolve() :
+      nbApi(conn, o.nueva ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password',
+            { method:'POST', anon:true, body:{ email:o.email, password:o.pass } })
+      .then(function(r){
+        if(!r || !r.access_token) throw new Error('La cuenta se creó pero falta confirmar el correo. En Supabase: Authentication → Sign In / Providers → Email → desactivá "Confirm email" y probá de nuevo.');
+        conn.ses = nbSes(r);
+      });
+    return p.then(function(){
+      if(o.comercio && o.comercio !== 'nuevo') return o.comercio;
+      if(o.comercio === 'nuevo') return null;
+      return nbApi(conn, '/rest/v1/rpc/mis_comercios_info', { method:'POST', body:{} }).then(function(lista){
+        var mios = (lista || []).filter(function(c){ return c.rol === 'admin'; });
+        if(mios.length) throw { elegir:true, lista:mios, conn:conn };
+        return null;
+      });
+    }).then(function(id){
+      if(id) return id;
+      aviso('Creando el comercio en la nube…');
+      return nbApi(conn, '/rest/v1/rpc/crear_comercio', { method:'POST', body:{ p_nombre:S.db.cfg.nombre, p_rubro:S.db.cfg.rubro || 'comercio' } });
+    }).then(function(id){
+      comercioId = id;
+      return nbApi(conn, '/rest/v1/registros?select=id&limit=1&comercio_id=eq.' + id);
+    }).then(function(filas){
+      if(filas && filas.length){
+        throw new Error('Ese comercio ya tiene datos en la nube. Para usarlo en este equipo: cerrá sesión y en la pantalla de ingreso tocá "Conectar este dispositivo a la nube".');
+      }
+      aviso('Guardando la llave cifrada…');
+      return SUB.exportKey('raw', S.dek).then(function(raw){ return wrapDEK(new Uint8Array(raw), o.pass); });
+    }).then(function(e){
+      return nbApi(conn, '/rest/v1/llaves?on_conflict=comercio_id,usuario_id', {
+        method:'POST', prefer:'resolution=merge-duplicates,return=minimal',
+        body:{ comercio_id:comercioId, usuario_id:conn.ses.uid, kdf:e.kdf, wrap:e.wrap, actualizado:new Date().toISOString() }
+      }).then(function(){ return e; });
+    }).then(function(e){
+      /* equipo local: usuario con el correo (abre sin internet con la misma clave) */
+      S.tenant.users = S.tenant.users.filter(function(u){ return u.u !== o.email; });
+      S.tenant.users.push({ u:o.email, rol:rol, kdf:e.kdf, wrap:e.wrap });
+      S.tenant.nube = { url:conn.url, key:conn.key, comercio:comercioId, email:o.email, uid:conn.ses.uid,
+                        disp:uid(), caja:'Caja 1', pref:'', desde:Date.now() };
+      var n = { h:{}, cursor:null, refresh:conn.ses.refresh };
+      /* el historial de stock viaja como historia (no vuelve a sumar) y el
+         stock actual entra como "saldo inicial" */
+      (S.db.mov || []).forEach(function(m){ if(m && m.id != null) n.h['mov/' + m.id] = 'H'; });
+      S.db.prod.forEach(function(p){
+        if(Number(p.stock)){
+          S.db.mov.push({ id:uid(), ts:Date.now(), prodId:p.id, delta:Number(p.stock), motivo:'saldo inicial (nube)', u:S.user });
+        }
+      });
+      S.db.turnos.forEach(function(t){ if(!t.disp){ t.disp = S.tenant.nube.disp; t.caja = 'Caja 1'; } });
+      if(!S.db.cfg.slug) S.db.cfg.slug = /rave/i.test(S.db.cfg.nombre || '') ? NUBE_DEF.slug : (slug(S.db.cfg.nombre).slice(0, 40) || 'mi-comercio');
+      S.db._nube = n;
+      saveMeta();
+      audit('nube.vinculado', 'comercio ' + comercioId + ' · ' + o.email);
+      doSave();
+      aviso('Subiendo los datos…');
+      return nubeArrancar(null).then(function(){
+        if(NB.err) throw NB.err;
+      });
+    }).catch(function(e){
+      if(e && e.elegir) return e;
+      throw e;
+    });
+  }
+
+  function nubeDesvincular(){
+    var pend = nbPendientes().length;
+    ask('Desconectar este equipo de la nube',
+        'Los datos de este equipo quedan como están, pero deja de recibir y mandar cambios.' +
+        (pend ? ' ATENCIÓN: hay ' + pend + ' cambios que todavía no se subieron y no van a llegar a los demás.' : ''),
+        function(){
+          nubeParar();
+          audit('nube.desvinculado', S.tenant.nube.email);
+          delete S.tenant.nube;
+          delete S.db._nube;
+          saveMeta(); save(true);
+          refresh();
+          toast('Equipo desconectado de la nube', 'ok');
+        }, true);
+  }
+
+  /* =======================================================================
+     CONECTAR UN DISPOSITIVO NUEVO (desde la pantalla de ingreso)
+     ======================================================================= */
+  function nubeConectarDispositivo(){
+    gErr('g-nube-err', '');
+    var email = clean($('#n-email').value, 120).toLowerCase(), pass = $('#n-pass').value;
+    var caja = Math.max(1, Math.min(99, toInt($('#n-caja').value) || 2));
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ gErr('g-nube-err', 'Revisá el correo.'); return; }
+    if(!pass){ gErr('g-nube-err', 'Falta la contraseña.'); return; }
+    if(SIN_CIFRADO){ gErr('g-nube-err', 'Este navegador no permite cifrar: abrí el sistema en Chrome, Edge o Firefox actualizados.'); return; }
+    var btn = $('#g-nube-go'), elegido = btn.getAttribute('data-com') || null;
+    function msg(t){ $('#g-nube-prog').textContent = t || ''; }
+    btn.disabled = true;
+    var conn = { url:NUBE_DEF.url, key:NUBE_DEF.key, ses:null }, com, llave, dek;
+    msg('Ingresando…');
+    nbApi(conn, '/auth/v1/token?grant_type=password', { method:'POST', anon:true, body:{ email:email, password:pass } })
+    .then(function(r){
+      conn.ses = nbSes(r);
+      return nbApi(conn, '/rest/v1/rpc/mis_comercios_info', { method:'POST', body:{} });
+    }).then(function(lista){
+      lista = lista || [];
+      if(!lista.length) throw new Error('Esta cuenta no pertenece a ningún comercio. Pedile al dueño que te sume desde Configuración → Usuarios.');
+      com = elegido ? lista.filter(function(c){ return c.id === elegido; })[0] : (lista.length === 1 ? lista[0] : null);
+      if(!com){
+        $('#n-coms').innerHTML = '<div class="gsub" style="margin:4px 0 8px">¿A qué comercio querés conectar este equipo?</div>' +
+          lista.map(function(c){
+            return '<button class="gbtn alt" type="button" data-ncom="' + esc(c.id) + '">' + esc(c.nombre) + ' · ' + esc(ROL_NOM[c.rol] || c.rol) + '</button>';
+          }).join('');
+        $$('#n-coms [data-ncom]').forEach(function(b){
+          b.addEventListener('click', function(){ btn.setAttribute('data-com', b.getAttribute('data-ncom')); $('#n-coms').innerHTML = ''; nubeConectarDispositivo(); });
+        });
+        var e0 = new Error(''); e0.silencio = true; throw e0;
+      }
+      if(S.meta && S.meta.tenants.some(function(t){ return t.nube && t.nube.comercio === com.id; })){
+        throw new Error('Este equipo ya está conectado a "' + com.nombre + '". Entrá con tu correo desde la pantalla de ingreso.');
+      }
+      msg('Buscando la llave del comercio…');
+      return nbApi(conn, '/rest/v1/llaves?select=kdf,wrap&comercio_id=eq.' + com.id + '&usuario_id=eq.' + conn.ses.uid);
+    }).then(function(ll){
+      llave = ll && ll[0];
+      if(!llave) throw new Error('Todavía no tenés la llave de "' + com.nombre + '". El dueño tiene que crearte el usuario desde Configuración → Usuarios (o volver a hacerlo).');
+      msg('Abriendo la llave…');
+      return unwrapDEK(llave, pass).catch(function(){
+        throw new Error('Tu contraseña no abre la llave del comercio (¿la cambiaste o el dueño puso otra?). Pedile al dueño que te vuelva a crear el acceso.');
+      });
+    }).then(function(k){
+      dek = k;
+      var t = { id:uid(), nombre:com.nombre, rubro:com.rubro, users:[{ u:email, rol:com.rol, kdf:llave.kdf, wrap:llave.wrap }],
+                lock:{ f:0, until:0 }, ultimo:email,
+                nube:{ url:conn.url, key:conn.key, comercio:com.id, email:email, uid:conn.ses.uid,
+                       disp:uid(), caja:'Caja ' + caja, pref:caja + '-', desde:Date.now() } };
+      S.dek = dek; S.tenant = t; S.user = email; S.rol = com.rol;
+      S.db = newDB({ nombre:com.nombre, rubro:com.rubro });
+      S.db._nube = { h:{}, cursor:null, refresh:conn.ses.refresh };
+      conn.onSes = function(s){ if(S.db && S.db._nube) S.db._nube.refresh = s.refresh; };
+      NB.conn = conn;
+      var g = NB.gen, dbx = S.db;
+      NB.vivo = function(){ return NB.gen === g && S.db === dbx; };
+      NB.progreso = function(n){ msg('Descargando… ' + n + ' registros'); };
+      msg('Descargando los datos del comercio…');
+      return nbBajar();
+    }).then(function(){
+      NB.progreso = null;
+      if(!S.db.cfg.nombre) S.db.cfg.nombre = com.nombre;
+      if(!S.db.cfg.rubro) S.db.cfg.rubro = com.rubro;
+      nbAjustarNumeracion();
+      S.meta = S.meta || { v:1, active:null, tenants:[] };
+      S.meta.tenants.push(S.tenant);
+      saveMeta();
+      btn.disabled = false; btn.removeAttribute('data-com'); msg('');
+      $('#n-pass').value = '';
+      var entry = S.tenant.users[0];
+      entrar(S.tenant, entry, S.db);
+      audit('nube.dispositivo', 'equipo conectado como ' + S.tenant.nube.caja);
+      doSave();
+      nubeArrancar(pass);
+      toast('Equipo conectado: ' + S.tenant.nube.caja, 'ok');
+    }).catch(function(e){
+      NB.progreso = null;
+      btn.disabled = false; msg('');
+      if(!e.silencio){
+        btn.removeAttribute('data-com');
+        if(S.tenant && S.tenant.nube && S.meta && !S.meta.tenants.some(function(t){ return t === S.tenant; })){
+          S.tenant = null; S.db = null; S.dek = null; NB.conn = null;
+        }
+        gErr('g-nube-err', e.message || 'No se pudo conectar');
+      }
+    });
+  }
+  /* la numeración de esta caja sigue desde el último ticket que tenga en la nube */
+  function nbAjustarNumeracion(){
+    var p = prefCaja(), mv = 0, mo = 0;
+    function num(x){
+      x = String(x == null ? '' : x);
+      if(p){ if(x.indexOf(p) !== 0) return 0; x = x.slice(p.length); }
+      else if(!/^\d+$/.test(x)) return 0;
+      return parseInt(x, 10) || 0;
+    }
+    S.db.ventas.forEach(function(v){ mv = Math.max(mv, num(v.nro)); });
+    S.db.ots.forEach(function(o){ mo = Math.max(mo, num(o.cod)); });
+    S.db.seq = S.db.seq || { venta:1, ot:1 };
+    S.db.seq.venta = Math.max(S.db.seq.venta || 1, mv + 1);
+    S.db.seq.ot = Math.max(S.db.seq.ot || 1, mo + 1);
+  }
+
+  /* =======================================================================
+     EQUIPO (usuarios) CON LA NUBE
+     ======================================================================= */
+  function nbCardUsuarios(){
+    var admin = S.rol === 'admin';
+    return '<div class="card b6"><div class="c-head"><span class="c-ttl">Usuarios y roles · nube</span>' +
+        (admin ? '<span class="acts"><button class="btn xs" type="button" id="nu-add">+ Usuario</button></span>' : '') +
+      '</div>' +
+      '<div class="rowlist" id="nu-lista">' + (admin ? '<div class="r"><span class="nm muted">Cargando el equipo…</span></div>'
+        : '<div class="r"><span class="nm"><b>' + esc(S.user) + '</b><span class="mt"> · ' + esc(ROL_NOM[S.rol] || S.rol) + '</span></span><span class="pill ok">vos</span></div>') +
+      '</div>' +
+      '<div class="note" style="margin-top:14px"><span class="ic">🔑</span><div>Cada persona entra con <b>su correo y su contraseña</b> ' +
+        'en cualquier equipo conectado. <b>Mostrador:</b> vender, caja, clientes, sellos. <b>Operador:</b> mesas u órdenes.</div></div>' +
+      '<button class="btn" type="button" id="k-pass" style="margin-top:14px">Cambiar mi contraseña</button>' +
+    '</div>';
+  }
+  function nbCargarUsuarios(){
+    var cont = $('#nu-lista');
+    if(!cont || S.rol !== 'admin' || !NB.conn) { if(cont && S.rol === 'admin') cont.innerHTML = '<div class="r"><span class="nm muted">Sin conexión con la nube</span></div>'; return; }
+    nbRpc(NB.conn, 'miembros_de', { p_comercio:S.tenant.nube.comercio }).then(function(lista){
+      cont = $('#nu-lista');
+      if(!cont) return;
+      cont.innerHTML = (lista || []).map(function(m){
+        var yo = m.usuario_id === S.tenant.nube.uid;
+        return '<div class="r"><span class="nm"><b>' + esc(m.nombre || m.email) + '</b><span class="mt"> · ' + esc(m.email || '') +
+          ' · ' + esc(ROL_NOM[m.rol] || m.rol) + (m.tiene_llave ? '' : ' · <b style="color:var(--p-bad)">sin llave</b>') + '</span></span>' +
+          (yo ? '<span class="pill ok">vos</span>' : '<button class="btn xs dang" type="button" data-nuq="' + esc(m.usuario_id) + '" data-nue="' + esc(m.email || '') + '">Quitar</button>') +
+          '</div>';
+      }).join('') || '<div class="r"><span class="nm muted">Sin usuarios</span></div>';
+      $$('[data-nuq]', cont).forEach(function(b){
+        b.addEventListener('click', function(){
+          var id = b.getAttribute('data-nuq'), em = b.getAttribute('data-nue');
+          ask('Quitar del equipo', em + ' deja de ver los datos del comercio en todos los equipos y pierde su llave.', function(){
+            nbRpc(NB.conn, 'quitar_miembro', { p_comercio:S.tenant.nube.comercio, p_usuario:id }).then(function(){
+              S.tenant.users = S.tenant.users.filter(function(u){ return u.u !== em; });
+              saveMeta();
+              audit('usuario.quitado', em + ' (nube)');
+              toast('Usuario quitado', 'ok');
+              nbCargarUsuarios();
+            }).catch(function(e){ toast(e.message, 'bad'); });
+          }, true);
+        });
+      });
+    }).catch(function(e){
+      if($('#nu-lista')) $('#nu-lista').innerHTML = '<div class="r"><span class="nm" style="color:var(--p-bad)">' + esc(e.message) + '</span></div>';
+    });
+  }
+  function nbNuevoUsuario(){
+    modal({
+      title:'Sumar a alguien del equipo',
+      sub:'Va a poder entrar con su correo en cualquier equipo conectado',
+      body:
+        '<div class="grid-f">' +
+          '<div class="f"><label for="nu-email">Correo</label><input class="inp" id="nu-email" type="email" maxlength="120" autocomplete="off"></div>' +
+          '<div class="f"><label for="nu-nom">Nombre</label><input class="inp" id="nu-nom" type="text" maxlength="40" placeholder="Ej: Caja tarde"></div>' +
+          '<div class="f"><label for="nu-rol">Rol</label><select class="inp" id="nu-rol">' +
+            '<option value="mostrador">Mostrador / recepción</option><option value="operador">Operador (mesas u órdenes)</option>' +
+            '<option value="admin">Administrador</option></select></div>' +
+          '<div class="f"><label for="nu-pass">Contraseña inicial</label><input class="inp" id="nu-pass" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres"></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px"><span class="ic">🔑</span><div>Pasale la contraseña en persona. ' +
+        'Si esa persona <b>ya tenía cuenta</b> con ese correo, poné acá <b>su contraseña de siempre</b>: con ella se envuelve su llave.</div></div>',
+      buttons:[
+        { t:'Cancelar', cls:'ghost' },
+        { t:'Sumar', cls:'gold', fn:function(box){
+            var email = clean($('#nu-email', box).value, 120).toLowerCase(), nom = clean($('#nu-nom', box).value, 40);
+            var rol = $('#nu-rol', box).value, pass = $('#nu-pass', box).value;
+            if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('Revisá el correo', 'bad'); return false; }
+            if(pass.length < 8){ toast('La contraseña necesita al menos 8 caracteres', 'bad'); return false; }
+            var c = S.tenant.nube.comercio, otro = { url:NB.conn.url, key:NB.conn.key, ses:null }, id;
+            nbApi(otro, '/auth/v1/signup', { method:'POST', anon:true, body:{ email:email, password:pass } }).then(function(r){
+              id = (r && r.user && r.user.id) || (r && r.id);
+              return nbRpc(NB.conn, 'sumar_miembro', { p_comercio:c, p_usuario:id, p_rol:rol, p_email:email, p_nombre:nom || email });
+            }, function(e){
+              if(e.status !== 422 && !/Ya existe/.test(e.message)) throw e;
+              return nbRpc(NB.conn, 'sumar_miembro_email', { p_comercio:c, p_email:email, p_rol:rol, p_nombre:nom || email })
+                .then(function(x){ id = x; });
+            }).then(function(){
+              return SUB.exportKey('raw', S.dek).then(function(raw){ return wrapDEK(new Uint8Array(raw), pass); });
+            }).then(function(e){
+              return nbReq(NB.conn, '/rest/v1/llaves?on_conflict=comercio_id,usuario_id', {
+                method:'POST', prefer:'resolution=merge-duplicates,return=minimal',
+                body:{ comercio_id:c, usuario_id:id, kdf:e.kdf, wrap:e.wrap, actualizado:new Date().toISOString() }
+              }).then(function(){ return e; });
+            }).then(function(e){
+              /* también puede usar ESTE equipo */
+              S.tenant.users = S.tenant.users.filter(function(u){ return u.u !== email; });
+              S.tenant.users.push({ u:email, rol:rol, kdf:e.kdf, wrap:e.wrap });
+              saveMeta();
+              audit('usuario.creado', email + ' (' + rol + ', nube)');
+              closeModal();
+              toast(email + ' ya puede entrar', 'ok');
+              nbCargarUsuarios();
+            }).catch(function(e){ toast(e.message, 'bad'); });
+            return false;
+          } }
+      ]
+    });
+  }
+  /* cambiar la contraseña de la cuenta de la nube y re-envolver la llave */
+  function nbCambiarClave(o, n, listo){
+    var nb = S.tenant.nube, entry = S.tenant.users.filter(function(x){ return x.u === S.user; })[0], e2;
+    unwrapDEK(entry, o).catch(function(){ throw new Error('La contraseña actual no es correcta'); })
+    .then(function(){ return SUB.exportKey('raw', S.dek); })
+    .then(function(raw){ return wrapDEK(new Uint8Array(raw), n); })
+    .then(function(e){
+      e2 = e;
+      return nbReq(NB.conn, '/rest/v1/llaves?comercio_id=eq.' + nb.comercio + '&usuario_id=eq.' + nb.uid, {
+        method:'PATCH', prefer:'return=representation', body:{ kdf:e2.kdf, wrap:e2.wrap, actualizado:new Date().toISOString() } });
+    }).then(function(filas){
+      if(!filas || filas.length !== 1) throw new Error('No se encontró tu llave en la nube: pedile al dueño que te vuelva a crear el acceso');
+      return nbReq(NB.conn, '/auth/v1/user', { method:'PUT', body:{ password:n } }).catch(function(err){
+        /* la contraseña no cambió: la llave vuelve a la clave anterior */
+        return nbReq(NB.conn, '/rest/v1/llaves?comercio_id=eq.' + nb.comercio + '&usuario_id=eq.' + nb.uid, {
+          method:'PATCH', prefer:'return=minimal', body:{ kdf:entry.kdf, wrap:entry.wrap } }).then(function(){ throw err; }, function(){ throw err; });
+      });
+    }).then(function(){
+      entry.kdf = e2.kdf; entry.wrap = e2.wrap; saveMeta();
+      audit('usuario.clave_cambiada', S.user + ' (nube)');
+      listo(null);
+    }).catch(function(e){ listo(e.red ? new Error('Hace falta internet para cambiar la contraseña de la nube') : e); });
+  }
+
+  /* =======================================================================
+     TARJETA "NUBE" EN CONFIGURACIÓN
+     ======================================================================= */
+  function nbCard(){
+    if(!nubeOn()){
+      if(S.rol !== 'admin') return '';
+      return '<div class="card b6"><div class="c-head"><span class="c-ttl">Nube · varios dispositivos</span></div>' +
+        '<div class="note info"><span class="ic">☁</span><div>Hoy los datos están <b>sólo en este equipo</b>. Conectando el comercio a la nube, ' +
+        'otras cajas, la tablet de los mozos o tu celular comparten ventas, stock y clientes al instante, y el menú del QR se actualiza solo.</div></div>' +
+        (nubeDisponible()
+          ? '<button class="btn gold" type="button" id="nb-vincular" style="margin-top:14px">Conectar este comercio a la nube</button>'
+          : '<div class="tiny muted" style="margin-top:12px">Esta copia no tiene configurada la nube.</div>') +
+      '</div>';
+    }
+    var nb = S.tenant.nube, c = S.db.cfg, admin = S.rol === 'admin';
+    return '<div class="card b6"><div class="c-head"><span class="c-ttl">Nube · varios dispositivos</span>' +
+        '<span class="acts"><button class="btn xs" type="button" id="nb-ahora">Sincronizar ahora</button></span></div>' +
+      '<div id="nb-estado">' + nbEstadoHTML() + '</div>' +
+      '<div class="rowlist" style="margin-top:12px">' +
+        '<div class="r"><span class="nm">Cuenta</span><span class="vl">' + esc(nb.email) + '</span></div>' +
+        '<div class="r"><span class="nm">Este equipo</span><span class="vl">' + esc(nb.caja || '—') + (nb.pref ? ' · tickets ' + esc(nb.pref) + 'N' : '') + '</span></div>' +
+        '<div class="r"><span class="nm">Cambios por subir</span><span class="vl">' + nbPendientes().length + '</span></div>' +
+        '<div class="r"><span class="nm">Última sincronización</span><span class="vl">' + (NB.ultimo ? fechaCorta(NB.ultimo) : '—') + '</span></div>' +
+      '</div>' +
+      (admin
+        ? '<div class="divider"></div>' +
+          '<div class="f"><label for="nb-slug">Dirección del menú para los clientes</label>' +
+            '<div class="inline"><input class="inp" id="nb-slug" type="text" maxlength="40" value="' + esc(c.slug || '') + '" style="flex:1;min-width:120px">' +
+            '<button class="btn" type="button" id="nb-slug-ok">Guardar</button></div>' +
+            '<span class="help">El menú del QR: <a href="' + esc(urlMenu()) + '" target="_blank" rel="noopener">' + esc(urlMenu()) + '</a></span></div>' +
+          (NB.menuErr ? '<div class="note bad" style="margin-top:10px"><span class="ic">⚠</span><div>' + esc(NB.menuErr) + '</div></div>' : '')
+        : '') +
+      '<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><div>Para sumar otra caja: abrí el sistema en ese equipo → ' +
+        '<b>Acceso del equipo</b> → <b>Conectar este dispositivo a la nube</b>, con el correo de la persona que lo va a usar.</div></div>' +
+      '<button class="btn dang" type="button" id="nb-desv" style="margin-top:12px">Desconectar este equipo</button>' +
+    '</div>';
+  }
+  function nbWireCard(){
+    var b;
+    if((b = $('#nb-vincular'))) b.addEventListener('click', nubeVincularModal);
+    if((b = $('#nb-ahora'))) b.addEventListener('click', function(){
+      nubeCiclo().then(function(){
+        if(R[S.sec] && S.sec === 'config') R.config();
+        toast(NB.err ? NB.err.message : 'Sincronizado', NB.err ? 'bad' : 'ok');
+      });
+    });
+    if((b = $('#nb-desv'))) b.addEventListener('click', nubeDesvincular);
+    if((b = $('#nb-slug-ok'))) b.addEventListener('click', function(){
+      var v = slug($('#nb-slug').value).slice(0, 40);
+      if(v.length < 2){ toast('La dirección necesita al menos 2 letras o números', 'bad'); return; }
+      S.db.cfg.slug = v;
+      NB.menuErr = null;
+      audit('nube.menu', 'dirección ' + v);
+      refresh();
+      nubeCiclo().then(function(){ if(S.sec === 'config') R.config(); });
+    });
+    if((b = $('#nu-add'))) b.addEventListener('click', nbNuevoUsuario);
+    if($('#nu-lista')) nbCargarUsuarios();
+  }
+
+  /* para las pruebas automáticas: no expone datos, sólo deja forzar un ciclo */
+  window.RAVE_NUBE = {
+    ciclo:function(){ return nubeCiclo().then(function(){ return { estado:NB.estado, pend:NB.pend, err:NB.err ? NB.err.message : null }; }); },
+    estado:function(){ return { estado:NB.estado, pend:NB.pend, err:NB.err ? NB.err.message : null, on:nubeOn() }; },
+    resumen:function(){
+      if(!S.db) return null;
+      var t = turnoAbierto();
+      return { prod:S.db.prod.length, ventas:S.db.ventas.length, clientes:S.db.clientes.length, mov:S.db.mov.length,
+               user:S.user, rol:S.rol, caja:t ? t.id : null, turnos:S.db.turnos.length,
+               nros:S.db.ventas.map(function(v){ return v.nro; }),
+               ids:S.db.prod.slice(0, 6).map(function(p){ return p.id; }) };
+    },
+    stock:function(id){ var p = S.db && prodById(id); return p ? p.stock : null; },
+    precio:function(id){ var p = S.db && prodById(id); return p ? p.precio : null; }
+  };
+
+  /* =======================================================================
      24. SELECTOR DE PRODUCTOS (compartido por mesas y órdenes)
      ======================================================================= */
   function pickerProductos(titulo, onPick){
@@ -8148,7 +9222,7 @@ var QR = (function(){
     bts.push({ t:'Guardar', cls:o ? 'pri' : 'gold', fn:function(box){
       var equipo = clean($('#o-equipo', box).value, 70);
       if(equipo.length < 2){ toast('Poné qué equipo es', 'bad'); return false; }
-      var target = o || { id:uid(), cod:String(S.db.seq.ot++).padStart(4,'0'), ts:Date.now(), estado:'recibida', hist:[] };
+      var target = o || { id:uid(), cod:prefCaja() + String(S.db.seq.ot++).padStart(4,'0'), ts:Date.now(), estado:'recibida', hist:[] };
       target.equipo = equipo;
       target.falla = clean($('#o-falla', box).value, 200);
       target.diag = clean($('#o-diag', box).value, 200);
@@ -8265,6 +9339,23 @@ var QR = (function(){
     $('#g-pass').addEventListener('keydown', function(e){ if(e.key === 'Enter') login(); });
     $('#g-user').addEventListener('keydown', function(e){ if(e.key === 'Enter') $('#g-pass').focus(); });
     $('#g-login-cancel').addEventListener('click', function(){ gateHide(); });
+    function abrirNube(){
+      if(!nubeDisponible()){ gErr(S.meta ? 'g-login-err' : 'g-setup-err', 'Esta copia del sistema no tiene configurada la nube.'); return; }
+      gErr('g-nube-err', ''); $('#n-coms').innerHTML = ''; $('#g-nube-go').removeAttribute('data-com');
+      gateShow('nube'); setTimeout(function(){ $('#n-email').focus(); }, 60);
+    }
+    $('#g-nube-open').addEventListener('click', abrirNube);
+    $('#g-nube-open2').addEventListener('click', abrirNube);
+    $('#g-nube-back').addEventListener('click', function(){
+      if(S.meta) gateShow('login'); else { setupIr(1); gateShow('setup'); }
+    });
+    $('#g-nube-go').addEventListener('click', nubeConectarDispositivo);
+    $('#n-pass').addEventListener('keydown', function(e){ if(e.key === 'Enter') nubeConectarDispositivo(); });
+    $('#erp-nube-pill').addEventListener('click', function(){
+      if(can('config')) go('config');
+      nubeCiclo();
+    });
+    window.addEventListener('online', function(){ if(nubeOn()) nubeCiclo(); });
 
     $('#s-next-1').addEventListener('click', function(){
       if(clean($('#s-nombre').value, 70).length < 2){ gErr('g-setup-err', 'Poné el nombre del comercio.'); return; }
@@ -8428,7 +9519,9 @@ var QR = (function(){
       abrir: function(){
         if(S.db && $('#erp').classList.contains('open')) return;
         if(S.db){ abrirPanel(); return; }
-        if(S.meta){ $('#g-user').value = 'admin'; gateShow('login'); setTimeout(function(){ $('#g-pass').focus(); }, 80); }
+        if(S.meta){
+          var ta = S.meta.tenants.filter(function(x){ return x.id === S.meta.active; })[0] || S.meta.tenants[0];
+          $('#g-user').value = (ta && ta.ultimo) || 'admin'; gateShow('login'); setTimeout(function(){ $('#g-pass').focus(); }, 80); }
         else { setupIr(1); gateShow('setup'); }
       }
     };
