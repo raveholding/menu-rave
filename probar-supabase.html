@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema RAVE · Probar la conexión con Supabase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f5f1; --surface:#fff; --surface2:#fbfaf7; --ink:#242220; --ink2:#6b6559;
+    --ink3:#9b958a; --line:#e8e3d9; --gold:#c9963e; --gold-deep:#a97c2c;
+    --ok:#2f7d5d; --ok-bg:#e9f4ef; --bad:#a33a3a; --bad-bg:#f9ebeb;
+    --warn:#a8761a; --warn-bg:#fbf2e0;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Poppins',system-ui,sans-serif; font-size:14px; line-height:1.55;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:780px; margin:0 auto}
+  .logo{
+    width:46px;height:46px;border-radius:14px;background:var(--ink);color:var(--gold);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
+    font-family:'Playfair Display',serif;font-weight:800;font-size:20px;
+  }
+  h1{font-family:'Playfair Display',serif;font-weight:800;font-size:25px;text-align:center;margin:0 0 6px}
+  .sub{text-align:center;color:var(--ink3);font-size:13px;margin:0 0 26px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:16px;
+        box-shadow:0 1px 2px rgba(36,34,32,.04),0 10px 26px -14px rgba(36,34,32,.12)}
+  .ttl{font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;font-weight:700;color:var(--ink3);margin-bottom:14px}
+  label{display:block;font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+  input{width:100%;min-height:44px;padding:10px 13px;border:1px solid var(--line);border-radius:11px;
+        font:inherit;font-size:13.5px;background:var(--surface);color:var(--ink);margin-bottom:12px}
+  input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,150,62,.16)}
+  button{
+    min-height:46px;padding:0 20px;border-radius:12px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer
+  }
+  button.pri{background:linear-gradient(180deg,var(--gold-deep),#8a6523);border-color:#8a6523;color:#fff}
+  button.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+  button:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .chk{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #f1ece2;align-items:flex-start}
+  .chk:last-child{border-bottom:0}
+  .ic{flex:0 0 22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:700;margin-top:1px}
+  .ic.ok{background:var(--ok-bg);color:var(--ok)} .ic.bad{background:var(--bad-bg);color:var(--bad)}
+  .ic.wait{background:#efeae1;color:var(--ink3)} .ic.warn{background:var(--warn-bg);color:var(--warn)}
+  .chk .tx{flex:1 1 auto;min-width:0}
+  .chk .tx b{display:block;font-weight:600;font-size:13.5px}
+  .chk .tx span{display:block;font-size:12px;color:var(--ink3);margin-top:2px;word-break:break-word}
+  .note{padding:13px 15px;border-radius:11px;font-size:12.5px;line-height:1.5;border:1px solid var(--line);
+        background:var(--surface2);color:var(--ink2);margin-top:14px}
+  .note.ok{background:var(--ok-bg);border-color:#cfe5da;color:#1f5a42}
+  .note.bad{background:var(--bad-bg);border-color:#eccfcf;color:#7d2b2b}
+  .note.warn{background:var(--warn-bg);border-color:#ecdcb6;color:#6f4e12}
+  .mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;word-break:break-all}
+  .hint{font-size:11px;color:var(--ink3);margin:-6px 0 12px}
+  #resumen{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">R</div>
+  <h1>Probar la base del Sistema RAVE</h1>
+  <p class="sub">Revisa que el esquema de Supabase haya quedado bien y que el aislamiento entre comercios funcione de verdad</p>
+
+  <div class="card">
+    <div class="ttl">Proyecto</div>
+    <label for="url">URL del proyecto</label>
+    <input id="url" type="url" value="https://vrkvfshwlbxpgqtmmdeu.supabase.co">
+    <label for="key">Publishable key</label>
+    <input id="key" type="text" value="sb_publishable_Q_XkB9-HAtI0v6qjKOY8XQ_F2f1mMKa">
+    <p class="hint">Estas dos son públicas a propósito: van dentro del archivo del sistema.</p>
+    <button class="dark" type="button" id="btn1">1 · Probar la base sin iniciar sesión</button>
+  </div>
+
+  <div class="card">
+    <div class="ttl">Tu usuario y el comercio</div>
+    <label for="mail">Correo</label>
+    <input id="mail" type="email" placeholder="raveholding@gmail.com" autocomplete="username">
+    <label for="pass">Contraseña (mínimo 8)</label>
+    <input id="pass" type="password" placeholder="la que vas a usar para entrar al sistema" autocomplete="current-password">
+    <p class="hint">Si el usuario no existe, se crea. Si ya existe, simplemente inicia sesión.</p>
+    <div class="row">
+      <button class="pri" type="button" id="btn2">2 · Crear cuenta y comercio RAVE</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ttl">Resultado</div>
+    <div id="lista"><div class="chk"><span class="ic wait">·</span><div class="tx"><b>Sin probar todavía</b>
+      <span>Tocá el botón 1 para empezar.</span></div></div></div>
+    <div id="resumen"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var lista = document.getElementById('lista');
+  var resumen = document.getElementById('resumen');
+  var sesion = null, comercioId = null;
+
+  function U(){ return document.getElementById('url').value.trim().replace(/\/+$/, ''); }
+  function K(){ return document.getElementById('key').value.trim(); }
+  function limpiar(){ lista.innerHTML = ''; resumen.style.display = 'none'; resumen.innerHTML = ''; }
+
+  function paso(estado, titulo, detalle){
+    var d = document.createElement('div');
+    d.className = 'chk';
+    var ic = { ok:'✓', bad:'✕', warn:'!', wait:'·' }[estado] || '·';
+    d.innerHTML = '<span class="ic ' + estado + '">' + ic + '</span><div class="tx"><b></b><span></span></div>';
+    d.querySelector('b').textContent = titulo;
+    d.querySelector('span').textContent = detalle || '';
+    lista.appendChild(d);
+    return d;
+  }
+  function cerrar(clase, texto){
+    resumen.style.display = 'block';
+    resumen.className = 'note ' + clase;
+    resumen.textContent = texto;
+  }
+
+  /* Llamada cruda a la API REST, con o sin sesión */
+  function api(ruta, opciones){
+    opciones = opciones || {};
+    var h = { 'apikey': K(), 'Content-Type': 'application/json' };
+    if(opciones.token) h['Authorization'] = 'Bearer ' + opciones.token;
+    if(opciones.prefer) h['Prefer'] = opciones.prefer;
+    return fetch(U() + ruta, {
+      method: opciones.method || 'GET',
+      headers: h,
+      body: opciones.body ? JSON.stringify(opciones.body) : undefined
+    }).then(function(r){
+      return r.text().then(function(t){
+        var j = null;
+        try{ j = t ? JSON.parse(t) : null; }catch(e){ j = t; }
+        return { ok:r.ok, status:r.status, data:j };
+      });
+    });
+  }
+  function msg(r){
+    if(r.data && r.data.message) return r.data.message;
+    if(r.data && r.data.error_description) return r.data.error_description;
+    if(r.data && r.data.msg) return r.data.msg;
+    if(r.data && r.data.hint) return r.data.hint;
+    return 'HTTP ' + r.status;
+  }
+
+  /* =====================================================================
+     1. Pruebas sin iniciar sesión
+     ===================================================================== */
+  document.getElementById('btn1').addEventListener('click', function(){
+    limpiar();
+    var b = this; b.disabled = true;
+    var fallas = 0;
+
+    paso('wait', 'Probando...', 'un momento');
+
+    api('/rest/v1/menu_publico?select=nombre&limit=1').then(function(r){
+      lista.innerHTML = '';
+      if(r.ok){
+        paso('ok', 'La base responde y el esquema está aplicado',
+             'La vista del menú público existe y contesta (' + (Array.isArray(r.data) ? r.data.length : 0) + ' productos por ahora).');
+      } else if(r.status === 404 || /menu_publico/.test(JSON.stringify(r.data||''))){
+        fallas++;
+        paso('bad', 'El esquema todavía no está aplicado',
+             'No encuentro la vista menu_publico. ¿Corriste el SQL en el SQL Editor? Respuesta: ' + msg(r));
+      } else {
+        fallas++;
+        paso('bad', 'La base no contesta como esperaba', msg(r));
+      }
+      return api('/rest/v1/productos?select=id&limit=1');
+    }).then(function(r){
+      if(r.ok && Array.isArray(r.data)){
+        fallas++;
+        paso('bad', 'PROBLEMA GRAVE: los productos se leen sin iniciar sesión',
+             'Cualquiera con la clave pública podría ver el catálogo completo con costos. Avisame y lo corrijo.');
+      } else {
+        paso('ok', 'Los datos del negocio están cerrados sin sesión',
+             'Pedir productos sin estar logueado devuelve: ' + msg(r) + '. Es lo que tiene que pasar.');
+      }
+      return api('/rest/v1/secretos?select=hmac&limit=1');
+    }).then(function(r){
+      if(r.ok && Array.isArray(r.data) && r.data.length){
+        fallas++;
+        paso('bad', 'PROBLEMA GRAVE: el secreto de las firmas es legible', 'Avisame enseguida.');
+      } else {
+        paso('ok', 'El secreto de las firmas es ilegible desde el navegador',
+             'Respuesta: ' + msg(r) + '. Sólo lo pueden leer las funciones del servidor.');
+      }
+      if(fallas === 0){
+        cerrar('ok', 'Primera parte en orden: la base está levantada, el esquema aplicado y lo privado cerrado. Seguí con el paso 2.');
+      } else {
+        cerrar('bad', 'Hay ' + fallas + ' problema(s). Copiame esta pantalla y lo arreglo.');
+      }
+      b.disabled = false;
+    }).catch(function(e){
+      lista.innerHTML = '';
+      paso('bad', 'No pude conectarme al proyecto', String(e && e.message || e));
+      cerrar('bad', 'Revisá que la URL esté bien escrita y que el proyecto no esté pausado en el panel de Supabase.');
+      b.disabled = false;
+    });
+  });
+
+  /* =====================================================================
+     2. Cuenta, comercio y pruebas con sesión
+     ===================================================================== */
+  document.getElementById('btn2').addEventListener('click', function(){
+    var mail = document.getElementById('mail').value.trim();
+    var pass = document.getElementById('pass').value;
+    if(!mail || pass.length < 8){
+      alert('Poné un correo y una contraseña de al menos 8 caracteres.');
+      return;
+    }
+    limpiar();
+    var b = this; b.disabled = true;
+    var fallas = 0;
+
+    paso('wait', 'Trabajando...', 'creando la cuenta e iniciando sesión');
+
+    /* intenta iniciar sesión; si no existe el usuario, lo crea */
+    api('/auth/v1/token?grant_type=password', { method:'POST', body:{ email:mail, password:pass } })
+    .then(function(r){
+      if(r.ok && r.data && r.data.access_token) return r;
+      return api('/auth/v1/signup', { method:'POST', body:{ email:mail, password:pass } })
+        .then(function(s){
+          if(!s.ok) throw new Error('No pude crear la cuenta: ' + msg(s));
+          if(s.data && s.data.access_token) return s;
+          /* alta hecha pero sin sesión: falta confirmar el correo */
+          return api('/auth/v1/token?grant_type=password', { method:'POST', body:{ email:mail, password:pass } })
+            .then(function(t){
+              if(t.ok && t.data && t.data.access_token) return t;
+              throw new Error('CONFIRMAR_MAIL');
+            });
+        });
+    })
+    .then(function(r){
+      lista.innerHTML = '';
+      sesion = r.data.access_token;
+      paso('ok', 'Sesión iniciada', 'Usuario: ' + mail);
+      return api('/rest/v1/comercios?select=id,nombre', { token:sesion });
+    })
+    .then(function(r){
+      if(!r.ok) throw new Error('No pude leer los comercios: ' + msg(r));
+      if(r.data.length){
+        comercioId = r.data[0].id;
+        paso('ok', 'Ya tenías un comercio creado', r.data.map(function(c){ return c.nombre; }).join(', '));
+        return null;
+      }
+      return api('/rest/v1/rpc/crear_comercio', {
+        method:'POST', token:sesion,
+        body:{ p_nombre:'Almacén y Licorería RAVE', p_rubro:'comercio' }
+      }).then(function(c){
+        if(!c.ok) throw new Error('No pude crear el comercio: ' + msg(c));
+        comercioId = (typeof c.data === 'string') ? c.data : c.data;
+        paso('ok', 'Comercio creado', 'Almacén y Licorería RAVE · ' + comercioId);
+        return null;
+      });
+    })
+    .then(function(){
+      return api('/rest/v1/comercios?select=id,nombre', { token:sesion });
+    })
+    .then(function(r){
+      if(r.data.length === 1){
+        paso('ok', 'Ves exactamente un comercio: el tuyo', r.data[0].nombre);
+      } else {
+        paso('warn', 'Ves ' + r.data.length + ' comercios', r.data.map(function(c){ return c.nombre; }).join(', '));
+      }
+      return api('/rest/v1/config?select=sellos,alcohol_desde,alcohol_hasta', { token:sesion });
+    })
+    .then(function(r){
+      if(r.ok && r.data.length){
+        var c = r.data[0];
+        paso('ok', 'La configuración del comercio se creó sola',
+             'Sellos para el premio: ' + c.sellos + ' · alcohol de ' + c.alcohol_desde + ' a ' + c.alcohol_hasta);
+      } else {
+        fallas++;
+        paso('bad', 'No encuentro la configuración del comercio', msg(r));
+      }
+      /* alta y baja de un producto de prueba */
+      return api('/rest/v1/productos', {
+        method:'POST', token:sesion, prefer:'return=representation',
+        body:{ comercio_id:comercioId, nombre:'PRUEBA · borrar', precio:1, costo:0 }
+      });
+    })
+    .then(function(r){
+      if(!r.ok || !r.data.length){
+        fallas++;
+        paso('bad', 'No pude cargar un producto de prueba', msg(r));
+        return null;
+      }
+      var id = r.data[0].id;
+      paso('ok', 'Puedo cargar productos en mi comercio', 'Se creó uno de prueba y se borra ahora.');
+      return api('/rest/v1/productos?id=eq.' + id, { method:'DELETE', token:sesion })
+        .then(function(d){
+          paso(d.ok ? 'ok' : 'warn', d.ok ? 'Y también borrarlos' : 'No pude borrar el de prueba',
+               d.ok ? 'El producto de prueba ya no está.' : 'Borralo a mano desde el Table Editor: se llama "PRUEBA · borrar".');
+        });
+    })
+    .then(function(){
+      /* intento de escribir en un comercio ajeno: tiene que fallar */
+      return api('/rest/v1/productos', {
+        method:'POST', token:sesion,
+        body:{ comercio_id:'00000000-0000-0000-0000-000000000000', nombre:'intruso', precio:1 }
+      });
+    })
+    .then(function(r){
+      if(r.ok){
+        fallas++;
+        paso('bad', 'PROBLEMA GRAVE: pude escribir en un comercio que no es mío',
+             'El aislamiento entre comercios no está funcionando. Avisame enseguida.');
+      } else {
+        paso('ok', 'No puedo escribir en un comercio ajeno',
+             'La base lo rechaza: ' + msg(r));
+      }
+      return api('/rest/v1/secretos?select=hmac', { token:sesion });
+    })
+    .then(function(r){
+      if(r.ok && Array.isArray(r.data) && r.data.length){
+        fallas++;
+        paso('bad', 'PROBLEMA GRAVE: con sesión puedo leer el secreto de las firmas', 'Avisame enseguida.');
+      } else {
+        paso('ok', 'Ni siquiera como dueño puedo leer el secreto de las firmas',
+             'Respuesta: ' + msg(r) + '. Queda sólo para el servidor, que es la idea.');
+      }
+      if(fallas === 0){
+        cerrar('ok', 'Todo en orden. La base está lista y el aislamiento entre comercios funciona. ' +
+               'Pasame esta pantalla y arranco con el sistema conectado.');
+      } else {
+        cerrar('bad', 'Hay ' + fallas + ' problema(s). Copiame esta pantalla y lo corrijo.');
+      }
+      b.disabled = false;
+    })
+    .catch(function(e){
+      var t = String(e && e.message || e);
+      if(t === 'CONFIRMAR_MAIL'){
+        lista.innerHTML = '';
+        paso('warn', 'La cuenta se creó, pero Supabase pide confirmar el correo',
+             'Tenés dos caminos, cualquiera sirve.');
+        cerrar('warn', 'Opción A: abrí el mail que te acaba de llegar y confirmá; después volvé y tocá el botón 2 otra vez. ' +
+               'Opción B (más rápida): en el panel de Supabase entrá a Authentication → Sign In / Providers → Email y desactivá ' +
+               '"Confirm email". Después volvé y tocá el botón 2.');
+      } else {
+        paso('bad', 'Se cortó la prueba', t);
+        cerrar('bad', 'Copiame este texto y lo resuelvo.');
+      }
+      b.disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>
