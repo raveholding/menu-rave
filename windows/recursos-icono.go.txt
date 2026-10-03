@@ -1,0 +1,44 @@
+package main
+
+import (
+	"image"
+	_ "image/png"
+	"os"
+
+	"github.com/tc-hib/winres"
+	"github.com/tc-hib/winres/version"
+)
+
+func main() {
+	f, err := os.Open(os.Args[1])
+	if err != nil { panic(err) }
+	img, _, err := image.Decode(f)
+	if err != nil { panic(err) }
+	icon, err := winres.NewIconFromResizedImage(img, nil)
+	if err != nil { panic(err) }
+	rs := winres.ResourceSet{}
+	rs.SetIcon(winres.Name("APPICON"), icon)
+	rs.SetManifest(winres.AppManifest{
+		Description:         "Sistema RAVE",
+		Compatibility:       winres.Win10AndAbove,
+		ExecutionLevel:      winres.AsInvoker,
+		DPIAwareness:        winres.DPIPerMonitorV2,
+		UseCommonControlsV6: true,
+	})
+	vi := version.Info{}
+	vi.SetFileVersion(os.Args[3])
+	vi.SetProductVersion(os.Args[3])
+	for k, v := range map[string]string{
+		"CompanyName": "Rave Holding", "ProductName": "Sistema RAVE",
+		"FileDescription": "Sistema RAVE - gestión del comercio", "LegalCopyright": "© 2026 Rave Holding · Salta",
+		"OriginalFilename": "SistemaRAVE.exe", "InternalName": "SistemaRAVE",
+		"FileVersion": os.Args[3], "ProductVersion": os.Args[3],
+	} {
+		vi.Set(0x0C0A, k, v) // español (España, alfabetización internacional)
+	}
+	rs.SetVersionInfo(vi)
+	out, err := os.Create(os.Args[2])
+	if err != nil { panic(err) }
+	if err := rs.WriteObject(out, winres.ArchAMD64); err != nil { panic(err) }
+	out.Close()
+}

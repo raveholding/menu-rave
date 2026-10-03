@@ -1,0 +1,21 @@
+SISTEMA RAVE - Windows 10/11
+============================
+
+INSTALAR
+  Doble clic en "Instalar Sistema RAVE".
+  Si Windows avisa "Windows protegió su PC": Más información > Ejecutar de todas formas
+  (el programa todavía no tiene firma digital).
+
+  No pide permisos de administrador. Queda:
+  - El ícono "Sistema RAVE" en el Escritorio.
+  - En el menú Inicio, la carpeta "Sistema RAVE" con: abrir, Actualizar y Desinstalar.
+  - "Sistema RAVE" en Configuración > Aplicaciones instaladas.
+
+DÓNDE QUEDA
+  Programa: C:\SistemaRAVE
+  Datos de este equipo (cifrados): C:\SistemaRAVE\perfil
+
+ACTUALIZAR
+  Menú Inicio > Sistema RAVE > Actualizar Sistema RAVE. Los datos no se tocan.
+
+Rave Holding · Salta
