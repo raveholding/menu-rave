@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" translate="no">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
+<!-- El traductor del navegador reescribe el texto y descoloca el diseño: acá no hace falta -->
+<meta name="google" content="notranslate">
 <title>Sistema RAVE · Probar la conexión con Supabase</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -43,15 +45,16 @@
   button.dark{background:var(--ink);border-color:var(--ink);color:#fff}
   button:disabled{opacity:.5;cursor:default}
   .row{display:flex;gap:10px;flex-wrap:wrap}
-  .chk{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #f1ece2;align-items:flex-start}
+  .chk{display:block;padding:12px 0;border-bottom:1px solid #f1ece2}
   .chk:last-child{border-bottom:0}
-  .ic{flex:0 0 22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-      font-size:12px;font-weight:700;margin-top:1px}
+  .ic{
+    display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;
+    text-align:center;font-size:12px;font-weight:700;vertical-align:top;margin-right:11px;
+  }
   .ic.ok{background:var(--ok-bg);color:var(--ok)} .ic.bad{background:var(--bad-bg);color:var(--bad)}
   .ic.wait{background:#efeae1;color:var(--ink3)} .ic.warn{background:var(--warn-bg);color:var(--warn)}
-  .chk .tx{flex:1 1 auto;min-width:0}
-  .chk .tx b{display:block;font-weight:600;font-size:13.5px}
-  .chk .tx span{display:block;font-size:12px;color:var(--ink3);margin-top:2px;word-break:break-word}
+  .chk-titulo{display:inline-block;width:calc(100% - 40px);font-weight:600;font-size:13.5px;vertical-align:top}
+  .chk-detalle{display:block;margin:3px 0 0 33px;font-size:12px;color:var(--ink3);word-break:break-word}
   .note{padding:13px 15px;border-radius:11px;font-size:12.5px;line-height:1.5;border:1px solid var(--line);
         background:var(--surface2);color:var(--ink2);margin-top:14px}
   .note.ok{background:var(--ok-bg);border-color:#cfe5da;color:#1f5a42}
@@ -62,7 +65,7 @@
   #resumen{display:none}
 </style>
 </head>
-<body>
+<body class="notranslate">
 <div class="wrap">
   <div class="logo">R</div>
   <h1>Probar la base del Sistema RAVE</h1>
@@ -92,8 +95,9 @@
 
   <div class="card">
     <div class="ttl">Resultado</div>
-    <div id="lista"><div class="chk"><span class="ic wait">·</span><div class="tx"><b>Sin probar todavía</b>
-      <span>Tocá el botón 1 para empezar.</span></div></div></div>
+    <div id="lista"><div class="chk"><div><span class="ic wait">·</span>
+      <span class="chk-titulo">Sin probar todavía</span></div>
+      <div class="chk-detalle">Tocá el botón 1 para empezar.</div></div></div>
     <div id="resumen"></div>
   </div>
 </div>
@@ -113,9 +117,10 @@
     var d = document.createElement('div');
     d.className = 'chk';
     var ic = { ok:'✓', bad:'✕', warn:'!', wait:'·' }[estado] || '·';
-    d.innerHTML = '<span class="ic ' + estado + '">' + ic + '</span><div class="tx"><b></b><span></span></div>';
-    d.querySelector('b').textContent = titulo;
-    d.querySelector('span').textContent = detalle || '';
+    d.innerHTML = '<div><span class="ic ' + estado + '">' + ic + '</span>' +
+                  '<span class="chk-titulo"></span></div><div class="chk-detalle"></div>';
+    d.querySelector('.chk-titulo').textContent = titulo;
+    d.querySelector('.chk-detalle').textContent = detalle || '';
     lista.appendChild(d);
     return d;
   }
