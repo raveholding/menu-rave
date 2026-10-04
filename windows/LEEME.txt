@@ -1,8 +1,10 @@
-SISTEMA RAVE - Windows 10/11
-============================
+SISTEMA RAVE 1.1 - Windows 10 y 11 (64 y 32 bits)
+=================================================
 
 INSTALAR
   Doble clic en "Instalar Sistema RAVE".
+  ¿La PC es de 32 bits? Usá "Instalar Sistema RAVE (PC de 32 bits)".
+  (Para saberlo: Configuración > Sistema > Acerca de > Tipo de sistema.)
   Si Windows avisa "Windows protegió su PC": Más información > Ejecutar de todas formas
   (el programa todavía no tiene firma digital).
 
@@ -10,6 +12,7 @@ INSTALAR
   - El ícono "Sistema RAVE" en el Escritorio.
   - En el menú Inicio, la carpeta "Sistema RAVE" con: abrir, Actualizar y Desinstalar.
   - "Sistema RAVE" en Configuración > Aplicaciones instaladas.
+  Necesita Microsoft Edge o Google Chrome (Windows 10 y 11 ya traen Edge).
 
 DÓNDE QUEDA
   Programa: C:\SistemaRAVE
@@ -18,4 +21,18 @@ DÓNDE QUEDA
 ACTUALIZAR
   Menú Inicio > Sistema RAVE > Actualizar Sistema RAVE. Los datos no se tocan.
 
-Rave Holding · Salta
+PC CON WINDOWS 7, 8 u 8.1
+  Este instalador no funciona en esas versiones (ya no reciben actualizaciones de
+  seguridad de Microsoft). En esas PC se puede usar el sistema desde el navegador,
+  entrando a la dirección del sistema en la nube. Recomendamos actualizar a Windows 10/11.
+
+IMPRESORA DE TICKETS Y LECTOR DE CÓDIGOS
+  Lector de códigos USB: se enchufa y listo (funciona como teclado).
+  Impresora térmica: Administración > "Periféricos de este equipo" > "+ Conectar".
+  Si la impresora está instalada en Windows, elegí "Impresora instalada en Windows"
+  y en el cuadro de impresión elegí la impresora y el tamaño del papel (58 u 80 mm).
+
+---------------------------------------------------------------
+Sistema RAVE · desarrollado por Rave Holding · Salta, Argentina
+¿Querés un sistema así para tu comercio? WhatsApp +54 9 387 514-3900
+raveholding@gmail.com

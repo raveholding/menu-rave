@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Menú digital · Sistema RAVE</title>
+<meta name="robots" content="noindex">
+<style>body{font-family:system-ui,sans-serif;background:#171513;color:#f3eee4;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;margin:0;padding:20px}a{color:#e8c97a}</style>
+</head><body><div><p>Abriendo el menú…</p><p><a id="ir" href="/menu-rave/">Ir al menú</a></p>
+<p style="font-size:12px;color:#8d867a">Sistema RAVE · desarrollado por Rave Holding</p></div>
+<script>
+/* enlace de producto que todavía no tiene su página: …/m/{comercio}/p/{producto}/ */
+(function(){
+  var m = location.pathname.match(/^(\/menu-rave)?\/m\/([a-z0-9-]+)\/p\/([^/]+)\/?/i);
+  var base = (location.pathname.indexOf('/menu-rave') === 0 ? '/menu-rave/' : '/');
+  var url = base;
+  if(m){
+    var q = [];
+    if(m[2].toLowerCase() !== 'rave') q.push('m=' + encodeURIComponent(m[2].toLowerCase()));
+    var pid = m[3]; try{ pid = decodeURIComponent(pid); }catch(e){}
+    q.push('p=' + encodeURIComponent(pid));
+    url = base + '?' + q.join('&');
+  }
+  document.getElementById('ir').href = url;
+  location.replace(url);
+})();
+</script></body></html>

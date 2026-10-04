@@ -39,7 +39,8 @@ var iconoICO []byte
 const (
 	nombre      = "Sistema RAVE"
 	empresa     = "Rave Holding"
-	version     = "1.0"
+	contacto    = "WhatsApp +54 9 387 514-3900"
+	version     = "1.1"
 	exeNombre   = "SistemaRAVE.exe"
 	urlNueva    = "https://raveholding.github.io/menu-rave/index.html"
 	claveDesins = `Software\Microsoft\Windows\CurrentVersion\Uninstall\SistemaRAVE`
@@ -189,7 +190,8 @@ func instalar() {
 	if aviso("Se va a instalar "+nombre+" en este equipo.\n\n"+
 		"• No hace falta ser administrador.\n"+
 		"• Queda un ícono en el Escritorio y en el menú Inicio.\n"+
-		"• Si ya estaba instalado, se actualiza y los datos se conservan.\n\n¿Continuar?",
+		"• Si ya estaba instalado, se actualiza y los datos se conservan.\n\n"+
+		"Desarrollado por "+empresa+" · "+contacto+"\n\n¿Continuar?",
 		mbYesNo|mbIconQuest) != idYes {
 		return
 	}
@@ -248,7 +250,8 @@ func instalar() {
 
 	msg := nombre + " quedó instalado.\n\n" +
 		"Para entrar: ícono \"" + nombre + "\" del Escritorio.\n" +
-		"Primera vez: asistente para crear el comercio, o \"Conectar este dispositivo a la nube\"."
+		"Primera vez: asistente para crear el comercio, o \"Conectar este dispositivo a la nube\".\n\n" +
+		"Soporte y sistemas a medida: " + empresa + " · " + contacto
 	if len(fallos) > 0 {
 		msg += "\n\nNo se pudieron crear algunos accesos directos: " + strings.Join(fallos, ", ") +
 			".\nAbrí el sistema desde " + exe
@@ -270,6 +273,9 @@ func registrar(dir, exe string) {
 	k.SetStringValue("DisplayIcon", exe+",0")
 	k.SetStringValue("DisplayVersion", version)
 	k.SetStringValue("Publisher", empresa)
+	k.SetStringValue("HelpLink", "https://wa.me/5493875143900")
+	k.SetStringValue("URLInfoAbout", "https://raveholding.github.io/menu-rave/")
+	k.SetStringValue("Contact", contacto)
 	k.SetStringValue("InstallLocation", dir)
 	k.SetStringValue("InstallDate", time.Now().Format("20060102"))
 	k.SetStringValue("UninstallString", `"`+exe+`" /desinstalar`)

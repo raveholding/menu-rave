@@ -39,6 +39,8 @@ func main() {
 	rs.SetVersionInfo(vi)
 	out, err := os.Create(os.Args[2])
 	if err != nil { panic(err) }
-	if err := rs.WriteObject(out, winres.ArchAMD64); err != nil { panic(err) }
+	arch := winres.ArchAMD64
+	if len(os.Args) > 4 && os.Args[4] == "386" { arch = winres.ArchI386 }
+	if err := rs.WriteObject(out, arch); err != nil { panic(err) }
 	out.Close()
 }

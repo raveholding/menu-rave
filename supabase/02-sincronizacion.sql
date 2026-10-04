@@ -80,7 +80,7 @@ declare
   v_hay        boolean;
   v_aplicados  int := 0;
   v_rechazos   jsonb := '[]'::jsonb;
-  v_delta      int;
+  v_delta      numeric;
   v_prod       text;
   v_pasada     int;
   v_motivo     text;
@@ -158,7 +158,7 @@ begin
         if v_col = 'prod' and not v_hay then
           -- Producto nuevo: su stock es la suma de los movimientos que ya hayan
           -- llegado antes que él (normalmente ninguno). Después lo lleva el servidor.
-          select coalesce(sum((r.datos->>'delta')::int), 0) into v_delta
+          select coalesce(sum((r.datos->>'delta')::numeric), 0) into v_delta
             from public.registros r
            where r.comercio_id = p_comercio and r.coleccion = 'mov'
              and r.datos->>'prodId' = v_id and not coalesce((r.datos->>'_h')::boolean, false);
@@ -173,7 +173,7 @@ begin
           else
             v_datos := v_datos - '_h';
           end if;
-          v_delta := coalesce((v_datos->>'delta')::int, 0);
+          v_delta := coalesce((v_datos->>'delta')::numeric, 0);
           insert into public.registros (comercio_id, coleccion, id, datos, borrado, dispositivo, usuario_id, actualizado)
           values (p_comercio, 'mov', v_id, v_datos, false, left(p_dispositivo, 40), auth.uid(), clock_timestamp())
           on conflict (comercio_id, coleccion, id) do nothing;
@@ -182,7 +182,7 @@ begin
             if v_prod is not null and v_delta <> 0 then
               update public.registros
                  set datos = jsonb_set(datos, '{stock}',
-                               to_jsonb(coalesce((datos->>'stock')::int, 0) + v_delta)),
+                               to_jsonb(coalesce((datos->>'stock')::numeric, 0) + v_delta)),
                      actualizado = clock_timestamp()
                where comercio_id = p_comercio and coleccion = 'prod' and id = v_prod;
             end if;
