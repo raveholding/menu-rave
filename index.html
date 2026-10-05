@@ -3585,7 +3585,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
       <button class="nav" type="button" data-go="config"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 7.4h9.2M18.6 7.4h1.8M3.6 16.6h3.8M13.4 16.6h7"/><circle cx="15.6" cy="7.4" r="2.3"/><circle cx="10" cy="16.6" r="2.3"/></svg></span><span class="tx" data-i18n="nav.config">Administración</span></button>
 
       <div class="side-foot">
-        <b>Sistema RAVE</b> v1.5<br>
+        <b>Sistema RAVE</b> v1.5.2<br>
 
         <span id="erp-foot-mode">Archivo único · datos locales</span><br>
         <a class="dev-link" href="https://wa.me/5493875143900?text=Hola%20Rave%20Holding!%20Quiero%20el%20Sistema%20RAVE%20para%20mi%20negocio." target="_blank" rel="noopener">Desarrollado por <b>Rave Holding</b> · Salta</a>
@@ -3694,6 +3694,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
             <p class="sub" data-i18n="ventas.sub">Toda venta queda con su condición fiscal y su estado ante ARCA. El CAE se solicita desde el módulo fiscal cuando el comercio tiene su certificado.</p>
           </div>
           <div class="acts">
+            <button class="btn sm gold" type="button" data-ximp="boletas">Importar de otro sistema</button>
             <button class="btn sm" type="button" id="ventas-csv">Exportar CSV</button>
           </div>
         </div>
@@ -3730,6 +3731,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
           </div>
           <div class="acts">
             <button class="btn sm" type="button" id="cli-import">Importar altas del menú</button>
+            <button class="btn sm gold" type="button" data-ximp="clientes">Importar de otro sistema</button>
             <button class="btn sm" type="button" id="cli-csv">Exportar CSV</button>
             <button class="btn sm gold" type="button" id="cli-add">+ Cliente</button>
           </div>
@@ -3758,6 +3760,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
             <p class="sub" data-i18n="gas.sub">Gastos por categoría y liquidación de comisiones o alquiler de infraestructura (mozos, sillas, boxes).</p>
           </div>
           <div class="acts">
+            <button class="btn sm" type="button" data-ximp="gastos">Importar gastos</button>
             <button class="btn sm" type="button" id="gas-liq">Liquidar comisiones</button>
             <button class="btn sm gold" type="button" id="gas-add">+ Gasto</button>
           </div>
@@ -4402,6 +4405,60 @@ var QR = (function(){
     catch(e){ toast('No se pudo guardar: el almacenamiento del navegador está lleno o bloqueado', 'bad'); return false; }
   }
 
+  /* ---- Almacén grande de la base: IndexedDB (cientos de MB) con localStorage de respaldo ----
+     localStorage tiene un tope de ~5 MB y con un catálogo con fotos se llenaba ("almacenamiento lleno").
+     La base se guarda en IndexedDB; si el navegador no lo permite se sigue usando localStorage. */
+  var DBMEM = {};   /* última versión guardada/leída de cada base (para tamaño y respaldo sin esperar) */
+  var idbP = null;
+  function idbAbrir(){
+    if(idbP) return idbP;
+    idbP = new Promise(function(ok, mal){
+      try{
+        if(!window.indexedDB){ mal(new Error('sin indexedDB')); return; }
+        var r = indexedDB.open('rave.db', 1);
+        r.onupgradeneeded = function(){ r.result.createObjectStore('kv'); };
+        r.onsuccess = function(){ ok(r.result); };
+        r.onerror = function(){ mal(r.error || new Error('indexedDB')); };
+        r.onblocked = function(){ mal(new Error('indexedDB bloqueado')); };
+      }catch(e){ mal(e); }
+    });
+    idbP.catch(function(){ idbP = null; });
+    return idbP;
+  }
+  function idbOp(modo, fn){
+    return idbAbrir().then(function(db){
+      return new Promise(function(ok, mal){
+        var tx = db.transaction('kv', modo), st = tx.objectStore('kv'), res = fn(st);
+        tx.oncomplete = function(){ ok(res && res.result); };
+        tx.onerror = tx.onabort = function(){ mal(tx.error || new Error('idb tx')); };
+      });
+    });
+  }
+  /* guarda; devuelve una promesa que resuelve true si quedó guardado en algún lado */
+  function dbSet(k, v){
+    DBMEM[k] = v;
+    return idbOp('readwrite', function(st){ return st.put(v, k); }).then(function(){
+      try{ localStorage.removeItem(k); }catch(e){}      /* ya no hace falta la copia chica */
+      return true;
+    }).catch(function(){
+      try{ localStorage.setItem(k, v); return true; }
+      catch(e){ toast('No se pudo guardar: el almacenamiento del navegador está lleno o bloqueado', 'bad'); return false; }
+    });
+  }
+  function dbGet(k){
+    return idbOp('readonly', function(st){ return st.get(k); }).then(function(v){
+      if(typeof v === 'string'){ DBMEM[k] = v; return v; }
+      var l = lsGet(k); if(l != null) DBMEM[k] = l;
+      return l;
+    }).catch(function(){ var l = lsGet(k); if(l != null) DBMEM[k] = l; return l; });
+  }
+  function dbDel(k){
+    delete DBMEM[k];
+    try{ localStorage.removeItem(k); }catch(e){}
+    return idbOp('readwrite', function(st){ return st.delete(k); }).catch(function(){});
+  }
+  function dbRaw(k){ return DBMEM[k] != null ? DBMEM[k] : lsGet(k); }
+
   function loadMeta(){
     var raw = lsGet(K_META);
     if(!raw) return null;
@@ -4436,12 +4493,12 @@ var QR = (function(){
     var json = JSON.stringify(S.db);
     var key = K_DB + S.tenant.id;
     if(SIN_CIFRADO || !S.dek){
-      lsSet(key, JSON.stringify({ plain:json }));
-      saving = false;
+      dbSet(key, JSON.stringify({ plain:json })).then(function(){ saving = false; });
       return;
     }
     aesEnc(S.dek, json).then(function(blob){
-      lsSet(key, JSON.stringify(blob));
+      return dbSet(key, JSON.stringify(blob));
+    }).then(function(){
       saving = false;
     }).catch(function(){
       saving = false;
@@ -4449,12 +4506,13 @@ var QR = (function(){
     });
   }
   function readDB(tenantId, dek){
-    var raw = lsGet(K_DB + tenantId);
-    if(!raw) return Promise.resolve(null);
-    var blob;
-    try{ blob = JSON.parse(raw); }catch(e){ return Promise.reject(new Error('base ilegible')); }
-    if(blob.plain) return Promise.resolve(JSON.parse(blob.plain));
-    return aesDec(dek, blob).then(function(s){ return JSON.parse(s); });
+    return dbGet(K_DB + tenantId).then(function(raw){
+      if(!raw) return null;
+      var blob;
+      try{ blob = JSON.parse(raw); }catch(e){ throw new Error('base ilegible'); }
+      if(blob.plain) return JSON.parse(blob.plain);
+      return aesDec(dek, blob).then(function(s){ return JSON.parse(s); });
+    });
   }
 
   /* Auditoría: toda acción crítica queda asentada con usuario y hora. */
@@ -5091,7 +5149,7 @@ var QR = (function(){
       Object.keys(S.db).forEach(function(k){ if(k !== '_nube') copia[k] = S.db[k]; });   /* la sesión de la nube no viaja */
       payload = JSON.stringify({ tipo:'rave-respaldo-legible', v:1, ts:Date.now(), comercio:S.tenant.nombre, db:copia }, null, 1);
     } else {
-      var raw = lsGet(K_DB + S.tenant.id);
+      var raw = dbRaw(K_DB + S.tenant.id);
       payload = JSON.stringify({
         tipo:'rave-respaldo-cifrado', v:1, ts:Date.now(),
         tenant:{ id:S.tenant.id, nombre:S.tenant.nombre, rubro:S.tenant.rubro, users:S.tenant.users },
@@ -5132,7 +5190,7 @@ var QR = (function(){
               var t = data.tenant;
               if(S.meta.tenants.some(function(x){ return x.id === t.id; })) t.id = uid();
               t.lock = { f:0, until:0 };
-              lsSet(K_DB + t.id, JSON.stringify(data.blob));
+              dbSet(K_DB + t.id, JSON.stringify(data.blob));
               S.meta.tenants.push(t); S.meta.active = t.id; saveMeta();
               salir(); gateShow('login');
               toast('Comercio restaurado. Ingresá con su contraseña.', 'ok');
@@ -7771,7 +7829,7 @@ var QR = (function(){
     if(ra) ra.addEventListener('click', function(){
       ask('Borrar el comercio', 'Se borra la base cifrada de "' + c.nombre + '" de este dispositivo. Esto NO se puede deshacer.', function(){
         nubeParar();
-        try{ localStorage.removeItem(K_DB + S.tenant.id); }catch(e){}
+        dbDel(K_DB + S.tenant.id);
         S.meta.tenants = S.meta.tenants.filter(function(t){ return t.id !== S.tenant.id; });
         S.meta.active = S.meta.tenants.length ? S.meta.tenants[0].id : null;
         saveMeta();
@@ -7795,7 +7853,7 @@ var QR = (function(){
   }
   function tamanioBase(){
     try{
-      var n = (lsGet(K_DB + S.tenant.id) || '').length;
+      var n = (dbRaw(K_DB + S.tenant.id) || '').length;
       return n > 1024*1024 ? (n/1048576).toFixed(1) + ' MB' : Math.round(n/1024) + ' KB';
     }catch(e){ return '—'; }
   }
@@ -8047,13 +8105,18 @@ var QR = (function(){
     };
   }
   function espejarMenu(){
-    try{
-      localStorage.setItem('rave.menu.local', JSON.stringify(catalogoPublico()));
-      /* el menú que está detrás del panel se redibuja al instante */
-      if(window.RAVE_MENU_RENDER) window.RAVE_MENU_RENDER();
-    }catch(e){
-      toast('El catálogo no entra en el almacenamiento del navegador: probá con fotos más livianas', 'bad');
+    var cat = catalogoPublico(), ok = false;
+    try{ localStorage.setItem('rave.menu.local', JSON.stringify(cat)); ok = true; }
+    catch(e){
+      /* no entra con fotos: se guarda sin fotos para que el menú siga funcionando */
+      try{
+        cat.productos.forEach(function(p){ if(p.img && p.img.length > 2000) p.img = ''; });
+        localStorage.setItem('rave.menu.local', JSON.stringify(cat)); ok = true;
+        toast('Las fotos son muchas: el menú de este equipo se ve sin fotos grandes. En la nube se publican igual.', 'bad');
+      }catch(e2){ toast('El catálogo no entra en el almacenamiento del navegador: probá con fotos más livianas', 'bad'); }
     }
+    /* el menú que está detrás del panel se redibuja al instante */
+    if(ok && window.RAVE_MENU_RENDER) window.RAVE_MENU_RENDER();
   }
 
   /* --- Imágenes: se achican y se comprimen antes de guardarlas --- */
@@ -11024,15 +11087,16 @@ var QR = (function(){
   }
 
   var IMP_CAMPOS = [
-    ['nom','Nombre', ['nombre','producto','descripcion','detalle','articulo']],
-    ['precio','Precio de venta', ['precio','precio_venta','pvp','precio venta','venta']],
-    ['cat','Categoría', ['categoria','rubro','seccion','familia']],
-    ['costo','Costo', ['costo','precio_costo','costo unitario']],
-    ['stock','Stock', ['stock','cantidad','existencia']],
-    ['min','Stock mínimo', ['minimo','min','stock_minimo']],
-    ['cb','Código de barras', ['codigo_barras','codigo','barras','ean','cod_barras']],
-    ['sku','SKU / código interno', ['sku','codigo_interno','cod']],
-    ['unidad','Unidad (u / kg / l)', ['unidad','um','medida']],
+    ['nom','Nombre', ['nombre','producto','descripcion','detalle','articulo','nombre_articulo','nombre_producto','descripcion_articulo','denominacion']],
+    ['precio','Precio de venta', ['precio','precio_venta','pvp','precio venta','venta','precio_de_venta','precio_publico','precio_final','precio_lista','precio_1','p_venta']],
+    ['cat','Categoría del menú / catálogo', ['categoria','rubro','seccion','familia','grupo','linea','departamento','subrubro','sub_rubro']],
+    ['area','Rubro del almacén (Almacén, Bebidas, Panadería…)', ['rubro_almacen','area','rubro_cierre','sector','rubro_interno']],
+    ['costo','Costo', ['costo','precio_costo','costo unitario','precio_de_costo','costo_unitario','costo_neto','p_costo','costo_reposicion']],
+    ['stock','Stock', ['stock','cantidad','existencia','existencias','stock_actual','stock_disponible','saldo']],
+    ['min','Stock mínimo', ['minimo','min','stock_minimo','punto_pedido','stock_min']],
+    ['cb','Código de barras', ['codigo_barras','codigo','barras','ean','cod_barras','codigo_de_barras','cod_barra','ean13','codigo_ean']],
+    ['sku','SKU / código interno', ['sku','codigo_interno','cod','cod_articulo','codigo_articulo','cod_interno','id_articulo','referencia']],
+    ['unidad','Unidad (u / kg / l)', ['unidad','um','medida','unidad_medida','unidad_de_medida']],
     ['alc','¿Alcohólica?', ['alcohol','alcoholica','alcoholico']],
     ['desc','Descripción para el menú', ['descripcion_menu','desc','detalle_menu']]
   ];
@@ -11079,20 +11143,36 @@ var QR = (function(){
         title:'Importar productos', sub:'CSV o Excel (.xlsx)', wide:true,
         body: pasos(0) +
           '<div class="note"><span class="ic">▦</span><div>La primera fila tiene que tener los títulos de las columnas ' +
-          '(nombre, precio, categoría, costo, stock, código de barras…). En el paso siguiente elegís cuál es cuál.</div></div>' +
-          '<input class="inp" id="imp-file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="margin-top:14px">',
+          '(nombre, precio, categoría, costo, stock, código de barras…). En el paso siguiente elegís cuál es cuál. ' +
+          'Sirve la exportación de tu sistema anterior (Excel .xlsx o CSV, aunque tenga acentos viejos).</div></div>' +
+          '<input class="inp" id="imp-file" type="file" accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="margin-top:14px">',
         buttons:[{ t:'Cancelar', cls:'ghost' }, { t:'Siguiente', cls:'gold', fn:function(box){
           var f = $('#imp-file', box).files[0];
           if(!f){ toast('Elegí un archivo', 'bad'); return false; }
           st.archivo = f.name;
-          var lectura = /\.xlsx$/i.test(f.name) ? f.arrayBuffer().then(leerXLSX) : f.text().then(parseCSV);
+          /* acepta CSV en ANSI/UTF-8 con ; , o tabulación, y Excel .xlsx de otros sistemas */
+          var lectura = ixLeerArchivo(f);
           lectura.then(function(filas){
             if(!filas || filas.length < 2){ toast('El archivo no tiene filas para importar', 'bad'); return; }
+            /* si el reporte trae títulos arriba, se busca la fila con más columnas conocidas */
+            var mejor = 0, mejorN = -1;
+            for(var hi = 0; hi < Math.min(12, filas.length - 1); hi++){
+              var hn = filas[hi].map(norm);
+              var n = IMP_CAMPOS.filter(function(c){ return hn.some(function(h){ return c[2].indexOf(h) !== -1; }); }).length;
+              if(n > mejorN){ mejorN = n; mejor = hi; }
+            }
+            if(mejor > 0) filas = filas.slice(mejor);
             st.filas = filas;
             st.head = filas[0].map(function(h){ return clean(h, 40); });
+            var hn2 = st.head.map(norm), usadas = {};
             IMP_CAMPOS.forEach(function(c){
-              var i = st.head.map(norm).findIndex(function(h){ return c[2].indexOf(h) !== -1; });
-              st.map[c[0]] = i >= 0 ? String(i) : '';
+              var i = hn2.findIndex(function(h, k){ return !usadas[k] && c[2].indexOf(h) !== -1; });
+              if(i >= 0){ usadas[i] = 1; st.map[c[0]] = String(i); } else st.map[c[0]] = '';
+            });
+            IMP_CAMPOS.forEach(function(c){
+              if(st.map[c[0]] !== '') return;
+              var i = hn2.findIndex(function(h, k){ return !usadas[k] && h.length >= 4 && c[2].some(function(sn){ return sn.length >= 4 && h.indexOf(sn) !== -1; }); });
+              if(i >= 0){ usadas[i] = 1; st.map[c[0]] = String(i); }
             });
             closeModal(); setTimeout(paso2, 60);
           }, function(e){ toast(e.message || 'No se pudo leer el archivo', 'bad'); });
@@ -11207,6 +11287,11 @@ var QR = (function(){
           var pub = st.menu === 'todos' || (st.menu === 'seleccionar' && !!st.sel[r.n]);
           var datos = { nom:r.nom, precio:r.precio };
           if(st.map.cat !== '' && r.catNom) datos.cat = prueba ? r.catNom : catPorNombre(r.catNom);
+          /* rubro del almacén: se busca por nombre entre los rubros definidos (independiente de la categoría del menú) */
+          if(st.map.area && st.map.area !== '' && lqActivo()){
+            var nomA = norm(valor(r.f, 'area')), aA = lqCfg().areas.filter(function(x){ return norm(x.nom) === nomA; })[0];
+            if(aA) datos.area = aA.id;
+          }
           if(st.map.costo !== '') datos.costo = Math.max(0, toNum(valor(r.f, 'costo')));
           if(st.map.min !== '') datos.min = Math.max(0, toNum(valor(r.f, 'min')));
           if(r.cb) datos.cb = r.cb;
@@ -11228,6 +11313,7 @@ var QR = (function(){
             var p = { id:slugProducto(r.nom), nom:r.nom, sub:'', grupo:'', img:'', desc:datos.desc || '', cat:datos.cat || cats()[0].cat,
                       precio:r.precio, costo:datos.costo || 0, min:datos.min != null ? datos.min : 2, cb:r.cb || '', sku:r.sku || '',
                       unidad:datos.unidad || 'u', alc:!!datos.alc, menu:pub, destacado:false, activo:true, estado:'active', stock:0 };
+            if(datos.area) p.area = datos.area;
             S.db.prod.push(p);
             if(r.stock) movStock(p.id, r.stock, 'importación ' + st.archivo);
           }
@@ -12436,7 +12522,8 @@ var QR = (function(){
       b.addEventListener('click', function(){ CMP.tab = b.getAttribute('data-ct'); R.compras(); });
     });
     $('#cmp-acts').innerHTML = '<button class="btn sm gold" type="button" id="cmp-nuevo">+ Cargar comprobante</button>' +
-      '<button class="btn sm" type="button" id="cmp-manual">Cargar a mano</button>';
+      '<button class="btn sm" type="button" id="cmp-manual">Cargar a mano</button>' +
+      (S.rol === 'admin' ? '<button class="btn sm" type="button" data-ximp="proveedores">Importar proveedores</button>' : '');
     $('#cmp-nuevo').addEventListener('click', function(){ CMP.tab = 'cargar'; R.compras(); });
     $('#cmp-manual').addEventListener('click', function(){ abrirRevision(manualItem()); });
     ({ resumen:cmpResumen, cargar:cmpCargar, lista:cmpLista, prov:cmpProv })[CMP.tab]();
@@ -13368,7 +13455,7 @@ var QR = (function(){
     var ventasEf = sm(['venta']), ingMan = sm(['ingreso']), egMan = sm(['egreso']), gas = sm(['gasto']);
     var ingresos = r2(ventasEf + ingMan), egresos = r2(egMan + gas);
     return {
-      nVentas:vs.length, totalVentas:r2(sum(vs, function(v){ return v.total; })),
+      nVentas:vs.length, totalVentas:vs.length || !t.impVentas ? r2(sum(vs, function(v){ return v.total; })) : t.impVentas,
       medios:medios, nMedios:nMed, fiscal:fisc, cobrosCta:cobros, cobrosCtaTotal:cobrosTotal,
       ventasEfectivo:ventasEf, ingresosManuales:ingMan, egresosManuales:egMan, gastos:gas,
       ingresos:ingresos, egresos:egresos, esperado:r2((t.inicial || 0) + ingresos - egresos),
@@ -13448,7 +13535,7 @@ var QR = (function(){
     var difNeta = r2(sum(rows, function(t){ return t.dif; })), conDif = rows.filter(function(t){ return Math.abs(t.dif || 0) >= 1; }).length;
     var al = alertasCierre();
 
-    $('#cj-acts').innerHTML = '<button class="btn sm" type="button" id="cj-csv">Exportar CSV</button>';
+    $('#cj-acts').innerHTML = (S.rol === 'admin' ? '<button class="btn sm gold" type="button" data-ximp="cajas">Importar de otro sistema</button>' : '') + '<button class="btn sm" type="button" id="cj-csv">Exportar CSV</button>';
     $('#cj-body').innerHTML =
       '<div class="card" style="margin-bottom:14px"><div class="cmp-filtros">' +
         '<div class="f"><label for="cj-desde">Desde</label><input class="inp" id="cj-desde" type="date" value="' + esc(f.desde) + '"></div>' +
@@ -13994,7 +14081,7 @@ var QR = (function(){
       gErr('g-ayuda-err', (e.red ? 'No hay conexión a internet.' : (/n[uú]mero|muchos|recibimos|contactarte/i.test(e.message) ? e.message : 'No se pudo enviar el pedido.')) + ' Escribinos por WhatsApp o correo con los botones de abajo.');
     });
   }
-  var APP_VERSION = '1.5';
+  var APP_VERSION = '1.5.2';
 
   function wireRecuperacion(){
     $('#g-recup-open').addEventListener('click', abrirRecuperar);
@@ -14042,6 +14129,35 @@ var QR = (function(){
      ======================================================================= */
   var IX_MAX_FILAS = 20000;
 
+  /* "Factura B", "FC B", "Ticket", "Nota de crédito A", "B"... → tipo de documento de este sistema.
+     Sin tipo → X (ticket interno): es histórico, no se hace pasar por factura. */
+  function ixTipoDoc(v){
+    var t = sinAcentos(String(v == null ? '' : v).toLowerCase()).replace(/[^a-z0-9 ]+/g, ' ').trim();
+    if(!t) return 'X';
+    var up = t.toUpperCase().replace(/\s+/g, '');
+    if(DOC_NOM[up]) return up;
+    var letra = (t.match(/\b([abc])\b/) || [])[1];
+    if(/nota.*cred|^nc\b|\bn ?c\b/.test(t)) return letra ? 'NC' + letra.toUpperCase() : 'NCB';
+    if(/presup/.test(t)) return 'P';
+    if(/remito|orden de entrega/.test(t)) return 'R';
+    if(/factura|\bfc\b|\bfa\b|fact/.test(t) && letra) return letra.toUpperCase();
+    if(/ticket|interno|venta|mostrador|comanda/.test(t)) return 'X';
+    return up;
+  }
+  function ixMedioPago(v){
+    var pg = ixNorm(v);
+    if(!pg) return 'efectivo';
+    if(PAGO_NOM[pg]) return pg;
+    if(/^tarjeta_?deb|^debito|^deb/.test(pg)) return 'debito';
+    if(/^tarjeta_?cred|^credito|^cred/.test(pg)) return 'credito';
+    if(/^cuenta|^fiado|^cta|^cuenta_corriente|^a_cuenta|^credito_interno/.test(pg)) return 'cuenta';
+    if(/^contado|^efectivo|^cash|^billete/.test(pg)) return 'efectivo';
+    if(/^transfer|^deposito|^cbu|^banco/.test(pg)) return 'transferencia';
+    if(/^qr|^mercado_?pago|^mp$|^modo|^billetera/.test(pg)) return 'qr';
+    if(/^tarjeta/.test(pg)) return 'credito';
+    return '';
+  }
+
   function ixIso(ts){
     if(!ts) return '';
     var d = new Date(ts);
@@ -14051,13 +14167,22 @@ var QR = (function(){
   function ixFecha(s, libre){
     s = String(s == null ? '' : s).trim();
     if(!s) return null;
-    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-    var a, mo, d, h, mi, se;
-    if(m){ a = +m[1]; mo = +m[2]; d = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0); se = +(m[6] || 0); }
-    else {
-      m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-      if(!m) return null;
-      d = +m[1]; mo = +m[2]; a = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0); se = +(m[6] || 0);
+    var a, mo, d, h, mi, se, m;
+    /* número de serie de Excel (ej. 45930 o 45930,75) */
+    if(/^\d{5}([.,]\d+)?$/.test(s)){
+      var n = parseFloat(s.replace(',', '.'));
+      if(n < 20000 || n > 80000) return null;
+      var u = new Date(Math.round(Date.UTC(1899, 11, 30) + n * 86400000));
+      a = u.getUTCFullYear(); mo = u.getUTCMonth() + 1; d = u.getUTCDate(); h = u.getUTCHours(); mi = u.getUTCMinutes(); se = u.getUTCSeconds();
+    } else {
+      m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+      if(m){ a = +m[1]; mo = +m[2]; d = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0); se = +(m[6] || 0); }
+      else {
+        m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})(?:[ T,]+(\d{1,2})[:.](\d{2})(?::(\d{2}))?)?/);
+        if(!m) return null;
+        d = +m[1]; mo = +m[2]; a = +m[3]; if(a < 100) a += a <= 69 ? 2000 : 1900;
+        h = +(m[4] || 0); mi = +(m[5] || 0); se = +(m[6] || 0);
+      }
     }
     if(mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 59) return null;
     var dt = new Date(a, mo - 1, d, h, mi, se);
@@ -14083,6 +14208,43 @@ var QR = (function(){
   function ixBajar(nombre, rows){
     bajarArchivo(nombre + '-' + ymd() + '.csv',
       '﻿' + toCSV(rows.map(function(r){ return r.map(ixCel); })), 'text/csv;charset=utf-8');
+  }
+  /* ---- lectura de archivos de OTROS sistemas ----
+     CSV en UTF-8 o ANSI (Windows-1252), separado por ; , tab o |, y Excel .xlsx. */
+  function ixParseTxt(txt){
+    txt = String(txt).replace(/^\uFEFF/, '');
+    var linea = '', i, q = false, cnt = { ';':0, ',':0, '\t':0, '|':0 };
+    for(i = 0; i < txt.length; i++){
+      var c = txt[i];
+      if(c === '"') q = !q;
+      else if(!q && (c === '\n')){ if(linea.replace(/[;,\t|\s]/g, '')) break; cnt = { ';':0, ',':0, '\t':0, '|':0 }; linea = ''; }
+      else if(!q){ linea += c; if(cnt[c] != null) cnt[c]++; }
+    }
+    var sep = ';', best = -1;
+    Object.keys(cnt).forEach(function(k){ if(cnt[k] > best){ best = cnt[k]; sep = k; } });
+    var out = [], row = [], cur = '', ch; q = false;
+    for(i = 0; i < txt.length; i++){
+      ch = txt[i];
+      if(q){
+        if(ch === '"'){ if(txt[i + 1] === '"'){ cur += '"'; i++; } else q = false; }
+        else cur += ch;
+      } else if(ch === '"'){ q = true; }
+      else if(ch === sep){ row.push(cur); cur = ''; }
+      else if(ch === '\n'){ row.push(cur); out.push(row); row = []; cur = ''; }
+      else if(ch !== '\r'){ cur += ch; }
+    }
+    if(cur !== '' || row.length){ row.push(cur); out.push(row); }
+    return out.filter(function(r){ return r.some(function(c){ return String(c).trim() !== ''; }); });
+  }
+  function ixLeerArchivo(f){
+    if(/\.xls$/i.test(f.name)) return Promise.reject(new Error('Los .xls viejos no se pueden leer: abrilo en Excel y guardalo como .xlsx o como CSV.'));
+    if(/\.xlsx$/i.test(f.name)) return f.arrayBuffer().then(leerXLSX);
+    return f.arrayBuffer().then(function(buf){
+      var txt;
+      try{ txt = new TextDecoder('utf-8', { fatal:true }).decode(buf); }
+      catch(e){ txt = new TextDecoder('windows-1252').decode(buf); }   /* sistemas viejos exportan en ANSI */
+      return ixParseTxt(txt);
+    });
   }
   function ixNorm(h){ return sinAcentos(String(h || '').toLowerCase()).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
 
@@ -14153,6 +14315,23 @@ var QR = (function(){
     return n;
   }
 
+  function ixExpProveedores(){
+    var rows = [['nombre','cuit','telefono','categoria','notas']];
+    S.db.proveedores.forEach(function(p){ rows.push([p.nombre, p.cuit || '', p.tel || '', p.cat || '', p.nota || '']); });
+    ixBajar('rave-proveedores', rows);
+    return rows.length - 1;
+  }
+  function ixExpGastos(desde, hasta){
+    var rows = [['fecha','importe','categoria','detalle','usuario']], n = 0;
+    S.db.gastos.slice().sort(function(a, b){ return a.ts - b.ts; }).forEach(function(g){
+      var d = ymd(new Date(g.ts));
+      if((desde && d < desde) || (hasta && d > hasta)) return;
+      n++; rows.push([ixIso(g.ts), g.monto, g.cat || '', g.det || '', g.u || '']);
+    });
+    ixBajar('rave-gastos', rows);
+    return n;
+  }
+
   /* ------------------- PLANTILLAS (columnas esperadas) ------------------- */
   var IX_PLANTILLAS = {
     rubros:   [['nombre','titulo','layout','alcohol','en_menu'], ['Gaseosas','Gaseosas y aguas','grid','no','si']],
@@ -14160,8 +14339,10 @@ var QR = (function(){
                ['Juan Pérez','3875551234','juan@correo.com','1990-05-21','50000','si','si','Cliente de barrio']],
     boletas:  [['numero','fecha','tipo','estado','pago','descuento','total','cliente_whatsapp','usuario','cae','producto','cantidad','precio_unitario','costo_unitario','unidad','codigo_barras'],
                ['0001-00000123','2026-09-30 19:45','B','ok','efectivo','0','7000','','mostrador','','Fernet Branca 750 ml','1','7000','5200','u','7790000000000']],
-    cajas:    [['caja','abierto','cerrado','usuario','inicial','esperado','contado','observaciones'],
-               ['Caja 1','2026-09-30 09:00','2026-09-30 21:00','mostrador','10000','85000','85000','']]
+    cajas:    [['caja','abierto','cerrado','usuario','inicial','esperado','contado','total_ventas','observaciones'],
+               ['Caja 1','2026-09-30 09:00','2026-09-30 21:00','mostrador','10000','85000','85000','120000','']],
+    proveedores: [['nombre','cuit','telefono','categoria','notas'], ['Distribuidora Norte SA','30712345678','3875550000','Bebidas','Entrega martes']],
+    gastos:   [['fecha','importe','categoria','detalle'], ['2026-09-30','15000','Servicios','Luz']]
   };
 
   /* ------------------------ ENTIDADES A IMPORTAR ------------------------ */
@@ -14170,7 +14351,9 @@ var QR = (function(){
     cats:     { arr:function(){ return cats(); },        idf:'cat' },
     clientes: { arr:function(){ return S.db.clientes; }, idf:'id' },
     ventas:   { arr:function(){ return S.db.ventas; },   idf:'id' },
-    turnos:   { arr:function(){ return S.db.turnos; },   idf:'id' }
+    turnos:   { arr:function(){ return S.db.turnos; },   idf:'id' },
+    proveedores:{ arr:function(){ return S.db.proveedores; }, idf:'id' },
+    gastos:   { arr:function(){ return S.db.gastos; },   idf:'id' }
   };
   function ixCrear(lote, col, obj){
     IX_COLS[col].arr().push(obj);
@@ -14258,14 +14441,16 @@ var QR = (function(){
   IX_ENT.clientes = {
     titulo:'clientes', plural:'Clientes',
     campos:[
-      ['nom','Nombre y apellido', ['nombre','cliente','apellido_y_nombre'], true],
-      ['wa','WhatsApp', ['whatsapp','celular','telefono','tel','wsp'], true],
-      ['cons','Consentimiento (si / no)', ['consentimiento','consiente','acepta'], true],
-      ['email','Email', ['email','correo','mail'], false],
-      ['cumple','Cumpleaños (AAAA-MM-DD o DD/MM/AAAA)', ['cumpleanos','cumple','nacimiento'], false],
-      ['limite','Límite de crédito', ['limite_credito','limite','credito'], false],
+      ['nom','Nombre y apellido', ['nombre','cliente','apellido_y_nombre','razon_social','nombre_y_apellido','nombre_completo','denominacion','apellido_nombre','nombre_cliente','nombre_fantasia'], true],
+      ['wa','WhatsApp / teléfono', ['whatsapp','celular','telefono','tel','wsp','movil','telefono_celular','cel','telefono_1','nro_telefono','tel_celular'], false],
+      ['cons','Consentimiento para WhatsApp (si / no)', ['consentimiento','consiente','acepta'], false],
+      ['email','Email', ['email','correo','mail','e_mail','correo_electronico'], false],
+      ['cumple','Cumpleaños (AAAA-MM-DD o DD/MM/AAAA)', ['cumpleanos','cumple','nacimiento','fecha_nacimiento','fecha_de_nacimiento'], false],
+      ['limite','Límite de crédito', ['limite_credito','limite','credito','limite_de_credito','tope_cuenta_corriente','limite_cta_cte'], false],
+      ['saldo','Saldo de cuenta corriente (deuda)', ['saldo','saldo_cuenta_corriente','saldo_cta_cte','deuda','saldo_deudor','saldo_actual','cta_cte'], false],
+      ['doc','CUIT / DNI', ['cuit','dni','documento','cuit_dni','nro_documento','cuil'], false],
       ['waok','¿Acepta mensajes por WhatsApp?', ['recibe_whatsapp','acepta_whatsapp','waok'], false],
-      ['notas','Notas', ['notas','observaciones'], false]
+      ['notas','Notas', ['notas','observaciones','observacion','comentarios'], false]
     ],
     analizar:function(get, filas, pol){
       var out = [], vistos = {};
@@ -14274,11 +14459,15 @@ var QR = (function(){
         r.nom = ixTxt(get(f, 'nom'), 80);
         r.wa = digits(get(f, 'wa'), 18);
         if(r.nom.length < 3) r.errores.push('poné nombre y apellido');
-        if(r.wa.length < 8) r.errores.push('WhatsApp inválido');
-        var wk = ixWaKey(r.wa);
-        if(wk && vistos[wk]) r.errores.push('WhatsApp repetido en el archivo (fila ' + vistos[wk] + ')');
+        if(r.wa && r.wa.length < 8){ r.aviso = 'teléfono demasiado corto: se carga sin teléfono'; r.wa = ''; }
+        /* sin teléfono se identifica por nombre; con teléfono, por los últimos 10 dígitos */
+        var wk = r.wa ? ixWaKey(r.wa) : ('n:' + r.nom.toLowerCase());
+        if(wk && vistos[wk]) r.errores.push('cliente repetido en el archivo (fila ' + vistos[wk] + ')');
         else if(wk) vistos[wk] = r.n;
-        if(!ixSiNo(get(f, 'cons'))) r.errores.push('sin consentimiento expreso: no se puede cargar (Ley 25.326)');
+        /* migración: el cliente se carga igual, pero SIN permiso de WhatsApp salvo que el archivo diga "si" (Ley 25.326) */
+        r.cons = ixSiNo(get(f, 'cons'));
+        r.saldo = Math.max(0, r2(toNum(get(f, 'saldo'))));
+        r.doc = ixTxt(get(f, 'doc'), 20);
         r.email = ixTxt(get(f, 'email'), 70);
         if(r.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.email)) r.errores.push('email inválido');
         var cu = get(f, 'cumple');
@@ -14286,14 +14475,23 @@ var QR = (function(){
         if(cu){ r.cumple = ixDia(cu); if(!r.cumple) r.errores.push('cumpleaños inválido'); }
         var lm = get(f, 'limite');
         r.limite = lm === '' ? null : Math.max(0, r2(toNum(lm)));
-        r.waOk = get(f, 'waok') === '' ? true : ixSiNo(get(f, 'waok'));
+        r.waOk = !!r.wa && r.cons && (get(f, 'waok') === '' ? true : ixSiNo(get(f, 'waok')));
         r.notas = ixTxt(get(f, 'notas'), 120);
-        r.ex = r.wa ? S.db.clientes.filter(function(c){ return ixWaKey(waDe(c)) === ixWaKey(r.wa); })[0] || null : null;
+        if(r.doc) r.notas = (r.notas ? r.notas + ' · ' : '') + 'Doc: ' + r.doc;
+        r.ex = r.wa ? S.db.clientes.filter(function(c){ return ixWaKey(waDe(c)) === ixWaKey(r.wa); })[0] || null
+                    : S.db.clientes.filter(function(c){ return String(c.nom || '').toLowerCase() === r.nom.toLowerCase(); })[0] || null;
+        if(r.saldo > 0 && r.ex && saldoCliente(r.ex.id) > 0.5) r.aviso = (r.aviso ? r.aviso + '; ' : '') + 'ya tiene deuda cargada: no se suma el saldo de nuevo';
         r.accion = r.errores.length ? 'error' : (r.ex ? (pol === 'omitir' ? 'omitir' : 'actualizar') : 'crear');
-        r.txt = r.nom + ' · ' + r.wa;
+        r.txt = r.nom + (r.wa ? ' · ' + r.wa : ' · sin teléfono') + (r.saldo ? ' · debe ' + money(r.saldo) : '');
         out.push(r);
       });
       return out;
+    },
+    extra:function(rows){
+      var sinCons = rows.filter(function(r){ return (r.accion === 'crear') && !r.cons; }).length;
+      var deuda = rows.filter(function(r){ return r.accion === 'crear' && r.saldo > 0.5; }).reduce(function(a, r){ return a + r.saldo; }, 0);
+      return (sinCons ? sinCons + ' clientes quedan SIN permiso de WhatsApp (el archivo no trae consentimiento): se cargan igual pero no se les manda nada. ' : '') +
+             (deuda ? 'Se cargan ' + money(deuda) + ' de deuda inicial en cuentas corrientes.' : '');
     },
     aplicar:function(rows, lote){
       var act = rows.filter(function(r){ return r.accion === 'crear' || r.accion === 'actualizar'; });
@@ -14305,13 +14503,22 @@ var QR = (function(){
           else {
             c = { id:uid(), ts:Date.now(), sellos:0, ultimoSello:0, canjes:0, consent:true, limite:0 };
           }
-          c.nom = r.nom; c.cumple = r.cumple || c.cumple || ''; c.consent = true;
+          c.nom = r.nom; c.cumple = r.cumple || c.cumple || ''; if(!r.ex) c.consent = !!r.cons; else if(r.cons) c.consent = true;
           if(r.notas) c.notas = r.notas; else if(c.notas == null) c.notas = '';
           if(r.limite != null) c.limite = r.limite;
-          if(c.waOk !== r.waOk){ c.waOk = r.waOk; c.waOkTs = Date.now(); }
-          c.wa = enc[i][0]; c.email = enc[i][1];
-          CLARO['wa' + c.id] = r.wa; CLARO['em' + c.id] = r.email;
+          if(c.waOk !== r.waOk && (!r.ex || r.cons)){ c.waOk = r.waOk; c.waOkTs = Date.now(); }
+          if(!r.ex || r.wa){ c.wa = enc[i][0]; CLARO['wa' + c.id] = r.wa; }
+          if(!r.ex || r.email){ c.email = enc[i][1]; CLARO['em' + c.id] = r.email; }
           if(!r.ex) ixCrear(lote, 'clientes', c);
+          /* deuda inicial de la cuenta corriente (migración): una venta histórica "a cuenta" */
+          if(r.saldo > 0.5 && !(r.ex && saldoCliente(c.id) > 0.5)){
+            ixCrear(lote, 'ventas', {
+              id:uid(), nro:'SALDO-' + c.id.slice(-6), ts:Date.now(), items:[{ id:'', nom:'Saldo inicial de cuenta corriente (migrado)', q:1, precio:r.saldo, costo:0, u:'u' }],
+              bruto:r.saldo, desc:0, total:r.saldo, pago:'cuenta', clienteId:c.id, u:S.user, turnoId:null, mesaNro:null, mozoId:null, otId:null,
+              fiscal:{ tipo:'X', cond:'', doc:'', ptoVenta:S.db.cfg.ptoVenta, caja:'', nro:null, cae:null, caeVto:null },
+              doc:{ clase:'interno', tipo:'X', nro:'SALDO-' + c.id.slice(-6) }, arca:'no_fiscal', estado:'ok', importada:true, lote:lote.id
+            });
+          }
         });
       });
     }
@@ -14321,27 +14528,27 @@ var QR = (function(){
   IX_ENT.boletas = {
     titulo:'boletas', plural:'Boletas / ventas (histórico)',
     campos:[
-      ['nro','Número', ['numero','nro','comprobante','boleta'], true],
-      ['fecha','Fecha (AAAA-MM-DD HH:MM)', ['fecha','fecha_hora'], true],
-      ['tipo','Tipo (A B C X R P)', ['tipo','clase'], true],
-      ['prod','Producto', ['producto','articulo','detalle','nombre'], true],
-      ['q','Cantidad', ['cantidad','cant'], true],
-      ['precio','Precio unitario', ['precio_unitario','precio','pu'], true],
-      ['costo','Costo unitario', ['costo_unitario','costo'], false],
-      ['unidad','Unidad', ['unidad','um'], false],
-      ['cb','Código de barras / SKU', ['codigo_barras','codigo','sku','ean'], false],
-      ['pago','Medio de pago', ['pago','medio_pago','forma_pago'], false],
-      ['desc','Descuento total', ['descuento','desc'], false],
-      ['total','Total (control)', ['total','importe'], false],
-      ['wa','WhatsApp del cliente', ['cliente_whatsapp','whatsapp'], false],
-      ['usuario','Usuario', ['usuario','vendedor','cajero'], false],
+      ['nro','Número', ['numero','nro','comprobante','boleta','nro_comprobante','numero_comprobante','nro_factura','factura','ticket','nro_ticket','n_comprobante','nro_cbte'], true],
+      ['fecha','Fecha (AAAA-MM-DD HH:MM)', ['fecha','fecha_hora','fecha_emision','fecha_comprobante','emision','fecha_y_hora'], true],
+      ['tipo','Tipo (A B C X R P)', ['tipo','clase','tipo_comprobante','tipo_cbte','letra','tipo_de_comprobante','comprobante_tipo'], false],
+      ['prod','Producto', ['producto','articulo','detalle','nombre','descripcion','nombre_articulo','item','concepto','descripcion_articulo'], true],
+      ['q','Cantidad', ['cantidad','cant','unidades','qty'], true],
+      ['precio','Precio unitario', ['precio_unitario','precio','pu','precio_unit','precio_venta','importe_unitario','p_unitario'], true],
+      ['costo','Costo unitario', ['costo_unitario','costo','precio_costo'], false],
+      ['unidad','Unidad', ['unidad','um','unidad_medida'], false],
+      ['cb','Código de barras / SKU', ['codigo_barras','codigo','sku','ean','cod_barras','codigo_de_barras','cod_articulo','codigo_articulo'], false],
+      ['pago','Medio de pago', ['pago','medio_pago','forma_pago','forma_de_pago','medio_de_pago','condicion_pago','tipo_pago','condicion_de_venta'], false],
+      ['desc','Descuento total', ['descuento','desc','bonificacion','importe_descuento'], false],
+      ['total','Total (control)', ['total','importe','importe_total','total_comprobante','monto'], false],
+      ['wa','WhatsApp del cliente', ['cliente_whatsapp','whatsapp','telefono_cliente','celular'], false],
+      ['usuario','Usuario', ['usuario','vendedor','cajero','operador'], false],
       ['cae','CAE', ['cae'], false],
-      ['estado','Estado', ['estado'], false]
+      ['estado','Estado', ['estado','situacion'], false]
     ],
     analizar:function(get, filas, pol){
       var grupos = [], idx = {};
       filas.forEach(function(f, i){
-        var tipo = clean(get(f, 'tipo'), 4).toUpperCase(), nro = ixTxt(get(f, 'nro'), 30);
+        var tipo = ixTipoDoc(get(f, 'tipo')), nro = ixTxt(get(f, 'nro'), 30);
         var key = tipo + '|' + nro;
         if(!nro){ grupos.push({ key:'', filas:[{ f:f, n:i + 2 }] }); return; }
         if(idx[key] == null){ idx[key] = grupos.length; grupos.push({ key:key, filas:[] }); }
@@ -14350,14 +14557,13 @@ var QR = (function(){
       var out = [];
       grupos.forEach(function(g){
         var f0 = g.filas[0].f, r = { n:g.filas[0].n, errores:[], nrofilas:g.filas.length };
-        r.tipo = clean(get(f0, 'tipo'), 4).toUpperCase();
+        r.tipo = ixTipoDoc(get(f0, 'tipo'));
         r.nro = ixTxt(get(f0, 'nro'), 30);
         if(!r.nro) r.errores.push('falta el número de boleta');
         if(!DOC_NOM[r.tipo]) r.errores.push('tipo inválido "' + r.tipo + '" (usá ' + Object.keys(DOC_NOM).join(', ') + ')');
         r.ts = ixFecha(get(f0, 'fecha'));
         if(r.ts == null) r.errores.push('fecha inválida o futura');
-        var pg = ixNorm(get(f0, 'pago'));
-        r.pago = !pg ? 'efectivo' : (PAGO_NOM[pg] ? pg : (/^tarjeta_?deb|^debito/.test(pg) ? 'debito' : (/^tarjeta_?cred|^credito/.test(pg) ? 'credito' : (/^cuenta|^fiado/.test(pg) ? 'cuenta' : ''))));
+        r.pago = ixMedioPago(get(f0, 'pago'));
         if(!r.pago) r.errores.push('medio de pago desconocido "' + clean(get(f0, 'pago'), 20) + '"');
         var est = ixNorm(get(f0, 'estado'));
         r.estado = /^nc$|^NC/.test(r.tipo) ? 'nc' : (r.tipo === 'P' ? 'presupuesto' : (est === 'anulada' ? 'anulada' : 'ok'));
@@ -14426,14 +14632,15 @@ var QR = (function(){
   IX_ENT.cajas = {
     titulo:'cajas', plural:'Cajas (turnos cerrados)',
     campos:[
-      ['caja','Caja', ['caja','nombre_caja'], false],
-      ['abierto','Apertura (AAAA-MM-DD HH:MM)', ['abierto','apertura','fecha_apertura'], true],
-      ['cerrado','Cierre (AAAA-MM-DD HH:MM)', ['cerrado','cierre','fecha_cierre'], true],
-      ['u','Usuario', ['usuario','cajero'], false],
-      ['inicial','Efectivo inicial', ['inicial','efectivo_inicial'], true],
-      ['esperado','Esperado en caja', ['esperado'], false],
-      ['contado','Efectivo contado', ['contado'], true],
-      ['obs','Observaciones', ['observaciones','obs'], false]
+      ['caja','Caja', ['caja','nombre_caja','punto_de_venta','terminal','nro_caja'], false],
+      ['abierto','Apertura (si el archivo no la trae, se toma el inicio del día)', ['abierto','apertura','fecha_apertura','fecha_hora_apertura','inicio','hora_apertura'], false],
+      ['cerrado','Cierre o fecha del cierre', ['cerrado','cierre','fecha_cierre','fecha_hora_cierre','fin','fecha','dia','hora_cierre'], true],
+      ['u','Usuario', ['usuario','cajero','operador','vendedor'], false],
+      ['inicial','Efectivo inicial', ['inicial','efectivo_inicial','saldo_inicial','monto_inicial','fondo_inicial','apertura_efectivo'], false],
+      ['esperado','Esperado en caja', ['esperado','efectivo_esperado','saldo_sistema','total_sistema','saldo_final_sistema'], false],
+      ['contado','Efectivo contado', ['contado','efectivo_contado','arqueo','saldo_final','efectivo_real','total_contado','efectivo'], true],
+      ['ventas','Total vendido del día (opcional)', ['total_ventas','ventas','total_vendido','venta_total','importe_ventas'], false],
+      ['obs','Observaciones', ['observaciones','obs','notas','comentarios'], false]
     ],
     analizar:function(get, filas, pol){
       var out = [], vistos = {};
@@ -14441,8 +14648,15 @@ var QR = (function(){
         var r = { n:i + 2, errores:[] };
         r.caja = ixTxt(get(f, 'caja'), 30) || 'Caja 1';
         r.abierto = ixFecha(get(f, 'abierto')); r.cerrado = ixFecha(get(f, 'cerrado'));
-        if(r.abierto == null) r.errores.push('apertura inválida');
-        if(r.cerrado == null) r.errores.push('cierre inválido');
+        if(r.cerrado == null) r.errores.push('fecha de cierre inválida');
+        if(r.abierto == null && get(f, 'abierto') !== '') r.errores.push('apertura inválida');
+        if(r.abierto == null && r.cerrado != null){
+          /* el otro sistema sólo trae la fecha del cierre: la apertura se toma desde el inicio de ese día */
+          var ini = new Date(r.cerrado); ini.setHours(0, 0, 0, 0);
+          r.abierto = ini.getTime() < r.cerrado ? ini.getTime() : r.cerrado - 60000;
+          r.sinApertura = true;
+        }
+        r.ventas = get(f, 'ventas') === '' ? 0 : Math.max(0, r2(toNum(get(f, 'ventas'))));
         if(r.abierto != null && r.cerrado != null && r.cerrado <= r.abierto) r.errores.push('el cierre es anterior a la apertura');
         r.inicial = Math.max(0, r2(toNum(get(f, 'inicial'))));
         if(get(f, 'contado') === '') r.errores.push('falta el efectivo contado');
@@ -14461,16 +14675,96 @@ var QR = (function(){
     aplicar:function(rows, lote){
       rows.forEach(function(r){
         if(r.accion !== 'crear') return;
-        var esp = r.esperado == null ? r.inicial : r.esperado;
+        var esp = r.esperado == null ? r.contado : r.esperado;
         ixCrear(lote, 'turnos', {
           id:uid(), disp:'importado', caja:r.caja, abierto:r.abierto, cerrado:r.cerrado, inicial:r.inicial,
           contado:r.contado, esperado:esp, dif:r2(r.contado - esp), obs:r.obs, u:r.u || S.user, uCierre:r.u || S.user,
-          movs:[], importada:true, lote:lote.id
+          movs:[], importada:true, impVentas:r.ventas || 0, lote:lote.id
         });
       });
       return Promise.resolve();
     },
-    extra:function(){ return 'Las cajas importadas son histórico: quedan marcadas como importadas, sin sello de integridad y sin movimientos.'; }
+    extra:function(rows){
+      var sa = (rows || []).filter(function(r){ return r.accion === 'crear' && r.sinApertura; }).length;
+      return 'Las cajas importadas son histórico: quedan marcadas como importadas, sin sello de integridad y sin movimientos.' +
+             (sa ? ' ' + sa + ' no traen hora de apertura: se toma el inicio del día.' : '');
+    }
+  };
+
+
+  /* ---- PROVEEDORES ---- */
+  IX_ENT.proveedores = {
+    titulo:'proveedores', plural:'Proveedores',
+    campos:[
+      ['nombre','Nombre / razón social', ['nombre','proveedor','razon_social','denominacion','nombre_proveedor','empresa'], true],
+      ['cuit','CUIT', ['cuit','cuil','documento','nro_documento'], false],
+      ['tel','Teléfono', ['telefono','tel','celular','whatsapp','movil'], false],
+      ['cat','Rubro / categoría', ['categoria','rubro','tipo'], false],
+      ['nota','Notas', ['notas','observaciones','observacion','comentarios','domicilio','direccion'], false]
+    ],
+    analizar:function(get, filas, pol){
+      var out = [], vistos = {};
+      filas.forEach(function(f, i){
+        var r = { n:i + 2, errores:[] };
+        r.nombre = ixTxt(get(f, 'nombre'), 80);
+        if(r.nombre.length < 2) r.errores.push('poné el nombre');
+        r.cuit = digits(get(f, 'cuit'), 11);
+        if(r.cuit && !cuitValido(r.cuit)){ r.aviso = 'CUIT inválido: se carga sin CUIT'; r.cuit = ''; }
+        r.tel = digits(get(f, 'tel'), 18); r.cat = ixTxt(get(f, 'cat'), 30); r.nota = ixTxt(get(f, 'nota'), 120);
+        var k = r.cuit || ('n:' + r.nombre.toLowerCase());
+        if(vistos[k]) r.errores.push('proveedor repetido en el archivo (fila ' + vistos[k] + ')'); else vistos[k] = r.n;
+        r.ex = S.db.proveedores.filter(function(p){ return (r.cuit && p.cuit === r.cuit) || normTxt(p.nombre) === normTxt(r.nombre); })[0] || null;
+        r.accion = r.errores.length ? 'error' : (r.ex ? (pol === 'omitir' ? 'omitir' : 'actualizar') : 'crear');
+        r.txt = r.nombre + (r.cuit ? ' · CUIT ' + r.cuit : '');
+        out.push(r);
+      });
+      return out;
+    },
+    aplicar:function(rows, lote){
+      rows.forEach(function(r){
+        if(r.accion === 'crear') ixCrear(lote, 'proveedores', { id:uid(), nombre:r.nombre, cuit:r.cuit, cat:r.cat, tel:r.tel, nota:r.nota, ts:Date.now(), u:S.user, importada:true, lote:lote.id });
+        else if(r.accion === 'actualizar'){
+          ixGuardarAntes(lote, 'proveedores', r.ex);
+          r.ex.nombre = r.nombre; if(r.cuit) r.ex.cuit = r.cuit; if(r.cat) r.ex.cat = r.cat; if(r.tel) r.ex.tel = r.tel; if(r.nota) r.ex.nota = r.nota;
+        }
+      });
+      return Promise.resolve();
+    }
+  };
+
+  /* ---- GASTOS (histórico) ---- */
+  IX_ENT.gastos = {
+    titulo:'gastos', plural:'Gastos (histórico)',
+    campos:[
+      ['fecha','Fecha', ['fecha','fecha_gasto','fecha_emision','dia'], true],
+      ['monto','Importe', ['monto','importe','total','importe_total','valor'], true],
+      ['cat','Categoría', ['categoria','rubro','tipo','concepto'], false],
+      ['det','Detalle', ['detalle','descripcion','proveedor','observaciones','nota'], false]
+    ],
+    analizar:function(get, filas, pol){
+      var out = [];
+      filas.forEach(function(f, i){
+        var r = { n:i + 2, errores:[] };
+        r.ts = ixFecha(get(f, 'fecha'));
+        if(r.ts == null) r.errores.push('fecha inválida o futura');
+        r.monto = Math.abs(r2(toNum(get(f, 'monto'))));
+        if(!(r.monto > 0)) r.errores.push('importe inválido');
+        r.cat = ixTxt(get(f, 'cat'), 30) || 'Otros'; r.det = ixTxt(get(f, 'det'), 90);
+        r.ex = S.db.gastos.filter(function(g){ return g.ts === r.ts && Math.abs((g.monto || 0) - r.monto) < 0.01 && g.cat === r.cat && String(g.det || '').toLowerCase() === r.det.toLowerCase(); })[0] || null;
+        r.accion = r.errores.length ? 'error' : (r.ex ? 'omitir' : 'crear');
+        r.txt = (r.ts ? fechaCorta(r.ts) : '?') + ' · ' + r.cat + ' · ' + money(r.monto) + (r.ex ? ' · ya existe' : '');
+        out.push(r);
+      });
+      return out;
+    },
+    aplicar:function(rows, lote){
+      rows.forEach(function(r){
+        if(r.accion !== 'crear') return;
+        ixCrear(lote, 'gastos', { id:uid(), ts:r.ts, cat:r.cat, det:r.det, monto:r.monto, u:S.user, efectivo:false, importada:true, lote:lote.id });
+      });
+      return Promise.resolve();
+    },
+    extra:function(){ return 'Los gastos importados son histórico: suman en los reportes pero no descuentan de ninguna caja.'; }
   };
 
   /* ---------------------------- ASISTENTE ---------------------------- */
@@ -14488,10 +14782,10 @@ var QR = (function(){
       modal({
         title:'Importar ' + E.titulo, sub:'CSV o Excel (.xlsx)', wide:true,
         body: pasos(0) +
-          '<div class="note"><span class="ic">▦</span><div>La primera fila tiene que tener los títulos de las columnas. ' +
-          'Si exportaste desde este sistema, el archivo ya viene listo. ' +
+          '<div class="note"><span class="ic">▦</span><div>Sirve el archivo que exporta tu sistema anterior (CSV o Excel .xlsx): ' +
+          'en el próximo paso elegís qué columna es cada dato. Si exportaste desde este sistema, ya viene listo. ' +
           '<button class="btn sm" type="button" id="ix-plant">Descargar plantilla</button></div></div>' +
-          '<input class="inp" id="ix-file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="margin-top:14px">',
+          '<input class="inp" id="ix-file" type="file" accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="margin-top:14px">',
         onOpen:function(box){
           $('#ix-plant', box).addEventListener('click', function(){
             var pl = IX_PLANTILLAS[ent];
@@ -14503,15 +14797,32 @@ var QR = (function(){
           if(!f){ toast('Elegí un archivo', 'bad'); return false; }
           if(f.size > 15 * 1024 * 1024){ toast('El archivo es muy grande (máximo 15 MB)', 'bad'); return false; }
           st.archivo = clean(f.name, 80);
-          var lectura = /\.xlsx$/i.test(f.name) ? f.arrayBuffer().then(leerXLSX) : f.text().then(parseCSV);
+          var lectura = ixLeerArchivo(f);
           lectura.then(function(filas){
             if(!filas || filas.length < 2){ toast('El archivo no tiene filas para importar', 'bad'); return; }
-            if(filas.length - 1 > IX_MAX_FILAS){ toast('Máximo ' + IX_MAX_FILAS + ' filas por archivo: dividilo en partes', 'bad'); return; }
+            /* algunos sistemas ponen títulos del reporte arriba: se busca la fila con más columnas conocidas */
+            var mejor = 0, mejorN = -1;
+            for(var hi = 0; hi < Math.min(12, filas.length - 1); hi++){
+              var hn = filas[hi].map(ixNorm);
+              var n = E.campos.filter(function(c){ return hn.some(function(h){ return c[2].indexOf(h) !== -1; }); }).length;
+              if(n > mejorN){ mejorN = n; mejor = hi; }
+            }
+            if(mejor > 0) filas = filas.slice(mejor);
+            if(filas.length > IX_MAX_FILAS + 1){ toast('Máximo ' + IX_MAX_FILAS + ' filas por archivo: dividilo en partes', 'bad'); return; }
             st.filas = filas;
             st.head = filas[0].map(function(h){ return clean(h, 40); });
+            var hn2 = st.head.map(ixNorm), usadas = {};
             E.campos.forEach(function(c){
-              var i = st.head.map(ixNorm).findIndex(function(h){ return c[2].indexOf(h) !== -1; });
-              st.map[c[0]] = i >= 0 ? String(i) : '';
+              var i = hn2.findIndex(function(h, k){ return !usadas[k] && c[2].indexOf(h) !== -1; });
+              if(i >= 0){ usadas[i] = 1; st.map[c[0]] = String(i); } else st.map[c[0]] = '';
+            });
+            /* segunda pasada, más flexible: el título contiene la palabra ("Fecha de emisión" ~ fecha_emision) */
+            E.campos.forEach(function(c){
+              if(st.map[c[0]] !== '') return;
+              var i = hn2.findIndex(function(h, k){
+                return !usadas[k] && h.length >= 4 && c[2].some(function(sn){ return sn.length >= 4 && (h.indexOf(sn) !== -1 || sn.indexOf(h) !== -1); });
+              });
+              if(i >= 0){ usadas[i] = 1; st.map[c[0]] = String(i); }
             });
             closeModal(); setTimeout(paso2, 60);
           }, function(e){ toast(e.message || 'No se pudo leer el archivo', 'bad'); });
@@ -14642,13 +14953,17 @@ var QR = (function(){
     }
     else if(ent === 'boletas') ixRango('Exportar boletas', function(d, h){ fin(ixExpBoletas(d, h)); });
     else if(ent === 'cajas') ixRango('Exportar cajas', function(d, h){ fin(ixExpCajas(d, h)); });
+    else if(ent === 'proveedores') fin(ixExpProveedores());
+    else if(ent === 'gastos') ixRango('Exportar gastos', function(d, h){ fin(ixExpGastos(d, h)); });
   }
   var IX_LISTA = [
     ['articulos', 'Artículos', 'Productos con precio, costo, stock, código de barras y rubro'],
     ['rubros', 'Rubros', 'Categorías del catálogo y del menú digital'],
     ['clientes', 'Clientes', 'Con consentimiento obligatorio (Ley 25.326)'],
     ['boletas', 'Boletas', 'Ventas y comprobantes, una fila por ítem'],
-    ['cajas', 'Cajas', 'Turnos con apertura, cierre, arqueo y diferencia']
+    ['cajas', 'Cajas', 'Turnos con apertura, cierre, arqueo y diferencia'],
+    ['proveedores', 'Proveedores', 'Nombre, CUIT, teléfono y rubro'],
+    ['gastos', 'Gastos', 'Egresos con fecha, categoría e importe (histórico)']
   ];
   function ixAbrir(){
     if(S.rol !== 'admin'){ toast('Importar y exportar lo hace un administrador', 'bad'); return; }
@@ -14660,6 +14975,9 @@ var QR = (function(){
           '<span class="inline" style="gap:8px"><button class="btn sm" type="button" data-ixe="' + x[0] + '">Exportar CSV</button>' +
           '<button class="btn sm gold" type="button" data-ixi="' + x[0] + '">Importar</button></span></div>';
       }).join('') + '</div>' +
+      '<div class="note ok" style="margin-top:14px"><span class="ic">⇄</span><div><b>¿Venís de otro sistema?</b> Pedile a tu sistema anterior que exporte cada listado a <b>Excel (.xlsx) o CSV</b> ' +
+        'y tocá <b>Importar</b>: el sistema lee CSV con acentos viejos (ANSI), con ; , o tabulaciones, salta títulos de reporte y te deja elegir qué columna es cada dato. ' +
+        'Orden recomendado: rubros → artículos → clientes → proveedores → boletas → cajas → gastos. Los .xls viejos hay que guardarlos primero como .xlsx.</div></div>' +
       '<div class="note" style="margin-top:14px"><span class="ic">ℹ</span><div>Los CSV se abren directo en Excel. Al importar boletas y cajas se carga <b>histórico</b>: ' +
         'no mueve stock ni caja y queda marcado como importado. Los sellos del programa de lealtad no se importan (antifraude).</div></div>' +
       '<div class="inline" style="margin-top:12px"><button class="btn" type="button" id="ix-undo"' + (ult ? '' : ' disabled') + '>Deshacer última importación' +
@@ -14678,6 +14996,15 @@ var QR = (function(){
       buttons:[{ t:'Cerrar', cls:'ghost' }]
     });
   }
+
+  /* botones "Importar de otro sistema" repartidos por las pantallas (Ventas, Clientes, Cajas, Gastos, Compras) */
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest ? e.target.closest('[data-ximp]') : null;
+    if(!b) return;
+    if(S.rol !== 'admin'){ toast('Importar lo hace un administrador', 'bad'); return; }
+    var ent = b.getAttribute('data-ximp');
+    if(IX_ENT[ent]) ixImportar(ent);
+  });
 
   /* =======================================================================
      59. CIERRE POR RUBROS Y REPARTO DIARIO  (opcional · apagado por defecto)
@@ -15205,7 +15532,7 @@ var QR = (function(){
       var t = tenantActivo();
       if(!t) return;
       if(clean($('#g-reset-txt').value, 10).toUpperCase() !== 'BORRAR'){ gErr('g-login-err', 'Para borrar, escribí BORRAR en el recuadro.'); return; }
-      try{ localStorage.removeItem(K_DB + t.id); localStorage.removeItem('rave.menu.local'); }catch(e){}
+      dbDel(K_DB + t.id); try{ localStorage.removeItem('rave.menu.local'); }catch(e){}
       S.meta.tenants = S.meta.tenants.filter(function(x){ return x.id !== t.id; });
       $('#g-reset-box').style.display = 'none';
       gErr('g-login-err', '');

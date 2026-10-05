@@ -1,7 +1,7 @@
 /* Sistema RAVE · funcionamiento sin conexión del menú y del sistema.
    Primero la red (siempre la versión más nueva); si no hay internet, lo
    último guardado. Sólo guarda archivos de este sitio: nunca datos de la nube. */
-var CACHE = 'rave-v1.5.1';
+var CACHE = 'rave-v1.5.2';
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(['./', './manifest.webmanifest', './icono-192.png']); }).then(function(){ return self.skipWaiting(); }));
 });
