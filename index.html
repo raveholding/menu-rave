@@ -1766,6 +1766,22 @@ body.pantalla-cliente > *:not(#rv-cliente){ display:none !important; }
 #erp-gate .gok{ background:#e9f4ef; color:#1f5d44; border:1px solid #cfe6dc; border-radius:10px; padding:10px 12px; font-size:12px; margin-bottom:12px; line-height:1.45; }
 #erp-gate select, #erp-gate textarea{ width:100%; }
 
+/* --- Vender: barra de atajos F1–F12 y edición de línea --- */
+#erp .pos-keys{ display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin-bottom:16px; }
+#erp .pos-keys .fk{ min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:0 12px;
+  border:1px solid var(--p-line); border-radius:12px; background:var(--p-card, #fff); color:var(--p-ink); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
+#erp .pos-keys .fk:hover{ border-color:var(--p-ink-3); }
+#erp .pos-keys .fk kbd{ font:inherit; font-size:10.5px; font-weight:700; color:var(--p-ink-3); border:1px solid var(--p-line); border-radius:6px; padding:1px 5px; }
+#erp .pos-keys .fk.on{ outline:2px solid var(--p-ink); }
+#erp .pos-keys .fk.gold{ background:var(--p-gold, #c9a24b); border-color:transparent; color:#1a1a1a; }
+#erp .pos-keys .fk.dang{ background:var(--p-bad-soft); border-color:#eccfcf; color:var(--p-bad); }
+#erp .pos-keys .fk.con{ border-style:solid; }
+#erp .pos-keys .fk.sin{ border-style:dashed; }
+#erp .tk-row.sel{ background:var(--p-line-2); border-radius:8px; }
+#erp .tk-row .te{ min-width:36px; min-height:36px; border:1px solid var(--p-line); border-radius:8px; background:none; cursor:pointer; color:var(--p-ink-2, inherit); }
+@media (max-width:1024px){ #erp .pos-keys{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:560px){ #erp .pos-keys{ grid-template-columns:repeat(3,minmax(0,1fr)); } #erp .pos-keys .fk{ font-size:11.5px; padding:0 8px; } }
+
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFFklEQVR42rWXTWxc1RXHf+fc9+bDHmeIg+sQEgWrfEgGCmIRUVXIC6hUVSygbJAQgqqLSlWrbiq1m27ogmXVblBVAdkgEEWIUhRALFBVSqSKIoGAJo4Te0iEseRkYmdm/GbmvXO6eGNjOzPxYMyRjvTeve/d+7/n/O/5ELaKArb+Mj09XYHVAqvsTvZBp1NK5+bmNq8QgGz9RbZPTE5OjlbHRp4w95/g3IJTAse3fjuUCLiIdBzmgTc0aj83O7u4vBmEbD75zUeP3kukx4Pqbe6Ou7MXIiKICGa26MbP5+bn/7EOQtYfbpmaOobyLsiIWdYVEe0B2wtxd89UNRYgy/yhswsLfweCADIxPTFaTUY/VtWpLLNUhIhvR7L8YL6aRNn0+dPnFxXwajLyeAhhKsuyqzZXGU5FhiJJMPNMNVQLqf4acAG4eeqmdzXojJlZzyUbknQcc0e2r+7gfLWxqhAHIQRwy+cGiImImNvsdeeuv1O+Nzk52hwpn1aVGz1n3ZatbruxSKmgpJmzeVJ77DCDNHOabWPpcsrlRka5qASFARzOl3Ffk8jviDohlMCL/QwowE9/uJ+jEwVUhbCJkq12bplKSSnFykoro97I+Pf/mvztvRXaXSMKMggEDpGbl2X68OHxdhxOqepEPwsUYyGOhKceO8ih8Zg0czKD37+wyOKllPFK4OHvV3ng7grd1KmOBk6eavGHl5YG3ghA3L0rwe/e8Zo1E+fKWrZBSOnp+vj55S5/en2Z0xfahCAs1VOO3TrCfbeP0mzbhqsGyY4AIoUoSP9xESqlnB+ffp5QjASRnBPfvaHIMOFzRwDOQDINiDhsgBjmt11HutQgdWgkOdnuuKlE0nWKcU68D860rknCDUvuFkClpFRKyoGxwCM/qHLroSLukALPnLjIR/MJ5YJgewpAchMHhacemySoEAWhEAn1Rsab/13lxAdXuNRIKcc6lOu+ngt6/jWHv759iWdOXORSI6XdNQqxMHNnhSMTMSqCDLmy7i61wSe1hFfev8yfX18mqIDD4QMxv3l4gupIIE2HKyB2TcJSQTi4P+bDs2u891mTsRHlciPjO9WIB4+N0RoiBgwFQHoJp58VzJw4El49uUKrbcSR0GobP7pnH4cOxHRSR+UbAkh7yabfeDd1SrFy+kKbf37SpFJWkq5z/b7Ag8fGaCS24y3YEcBoSRgr5xnaPD+5+1fjIhBHwmsnV7iyZsRBaCTG/XdVmD5SIgrS14IbFr5WMhLg6ScP9s2Gax2nmxq/Pf4lS/WUta7xix8f4NH7rmN1zYhUMJyFpQ6/O/4labZRU2xJRpGZybYaZEsYfv6d+uB6wGGlmSEC5YLy8r9W+HBujczzuRByN/UtaPJCUSJvtztSLKSDTPTRfNJ3Ae8lmlJBEcl92Wwb/5ltbaB0zzNoqaD9KuXM3DrrJdn7qnKvuV9Vku3E4s0kG3RjthExL8nMF1Lzae39+ZqoivdpBMyvrdtdtuM3jqmIILxVq9USBaRV6DybZdmyqkab26ZvQUwEycy6jv4R8oitX5z64qLhT+QmlODu3V6P6Huk5u4poCFocOOX586dOwNo6H0Q6vWV2er+6sci8kAUQmXdpXuhIiIhBAUSM/vV2fnaX9Y7srDJfaFeX/ls//jIi3jo4D4OlHNWuPUs8rVVRNoIC27+kmb+szMLtbf6NadXtc4zMzPR4uL8ETPK36wpjDtpml6o1WpJv/b8/wkypQGng8zuAAAAAElFTkSuQmCC">
 <link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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">
@@ -3585,7 +3601,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
       <button class="nav" type="button" data-go="config"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 7.4h9.2M18.6 7.4h1.8M3.6 16.6h3.8M13.4 16.6h7"/><circle cx="15.6" cy="7.4" r="2.3"/><circle cx="10" cy="16.6" r="2.3"/></svg></span><span class="tx" data-i18n="nav.config">Administración</span></button>
 
       <div class="side-foot">
-        <b>Sistema RAVE</b> v1.5.2<br>
+        <b>Sistema RAVE</b> v1.5.3<br>
 
         <span id="erp-foot-mode">Archivo único · datos locales</span><br>
         <a class="dev-link" href="https://wa.me/5493875143900?text=Hola%20Rave%20Holding!%20Quiero%20el%20Sistema%20RAVE%20para%20mi%20negocio." target="_blank" rel="noopener">Desarrollado por <b>Rave Holding</b> · Salta</a>
@@ -3625,6 +3641,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
           <div><b>La caja está cerrada.</b> Abrila para registrar ventas en efectivo y poder hacer el arqueo al cierre.
             <button class="btn xs" type="button" data-go="caja" style="margin-left:8px">Abrir caja</button></div>
         </div>
+        <div class="pos-keys" id="pos-keys" role="toolbar" aria-label="Atajos de teclado del mostrador (F1 a F12)"></div>
         <div class="pos">
           <div class="stack">
             <div class="card">
@@ -4394,7 +4411,7 @@ var QR = (function(){
     user:null, rol:null,
     sec:'dash',
     lang:'es',
-    posQ:'', posCat:'todos', ticket:[],
+    posQ:'', posCat:'todos', ticket:[], posSel:null, posArca:null, posPago:null,
     repRango:7,
     csrf:''         /* token por sesión; ver nota en el envío de formularios */
   };
@@ -5660,6 +5677,7 @@ var QR = (function(){
 
     posGrid();
     posTicket();
+    posKeysBar();
     gestosPOS();
     var q = $('#pos-q');
     q.value = S.posQ;
@@ -5754,6 +5772,8 @@ var QR = (function(){
     } else if(delta > 0){
       S.ticket.push({ id:p.id, nom:p.nom, q:delta, precio:p.precio, costo:p.costo||0, alc:!!p.alc, u:p.unidad || 'u' });
     }
+    var sigue = S.ticket.some(function(x){ return x.id === id; });
+    if(sigue && delta > 0) S.posSel = id;
     posTicket();
     posGrid();
   }
@@ -5766,12 +5786,13 @@ var QR = (function(){
       (S.ticket.length ? '<span class="acts"><button class="btn xs ghost" type="button" id="tk-clear">Vaciar</button></span>' : '') + '</div>' +
       (S.ticket.length
         ? '<div class="tk-items">' + S.ticket.map(function(i){
-            return '<div class="tk-row"><span class="nm">' + esc(i.nom) +
+            return '<div class="tk-row' + (posItemSel() === i ? ' sel' : '') + '" data-tsel="' + esc(i.id) + '"><span class="nm">' + esc(i.nom) +
               '<span>' + money(i.precio) + (i.u && i.u !== 'u' ? ' por ' + esc(i.u) : ' c/u') + (i.alc ? ' · 🔞' : '') + '</span></span>' +
               '<span class="stp"><button type="button" data-tk="-" data-id="' + esc(i.id) + '" aria-label="Quitar uno">−</button>' +
               '<button type="button" class="q" data-tq="' + esc(i.id) + '" aria-label="Cambiar cantidad">' + esc(fmtCant(i.q, i.u)) + '</button>' +
               '<button type="button" data-tk="+" data-id="' + esc(i.id) + '" aria-label="Agregar uno">+</button></span>' +
-              '<span class="vl num" style="min-width:74px;text-align:right;font-weight:600">' + money(redondear(i.precio*i.q)) + '</span></div>';
+              '<span class="vl num" style="min-width:74px;text-align:right;font-weight:600">' + money(redondear(i.precio*i.q)) + '</span>' +
+              '<button type="button" class="te" data-te="' + esc(i.id) + '" aria-label="Editar cantidad e importe de ' + esc(i.nom) + '" title="Editar cantidad / importe">✎</button></div>';
           }).join('') + '</div>' +
           '<div class="tk-tot"><span class="lb">Total · ' + n + (n === 1 ? ' ítem' : ' ítems') + '</span><span class="vl">' + money(tot) + '</span></div>' +
           '<div style="margin-top:14px;display:flex;flex-direction:column;gap:9px">' +
@@ -5797,12 +5818,19 @@ var QR = (function(){
       });
     });
     var cl = $('#tk-clear');
-    if(cl) cl.addEventListener('click', function(){ S.ticket = []; posTicket(); posGrid(); });
+    if(cl) cl.addEventListener('click', posBorrarOperacion);
+    $$('#pos-ticket [data-te]').forEach(function(b){
+      b.addEventListener('click', function(e){ e.stopPropagation(); posEditarLinea(b.getAttribute('data-te')); });
+    });
+    $$('#pos-ticket [data-tsel]').forEach(function(r){
+      r.addEventListener('click', function(){ S.posSel = r.getAttribute('data-tsel'); $$('#pos-ticket .tk-row').forEach(function(x){ x.classList.toggle('sel', x === r); }); });
+    });
     var cb = $('#tk-cobrar');
     if(cb) cb.addEventListener('click', function(){ cobrarModal(S.ticket.slice(), null); });
     var mz = $('#tk-mesa');
     if(mz) mz.addEventListener('click', cargarAMesa);
     clienteMostrar(S.ticket);
+    posKeysBar();
   }
 
   /* --- Cobro: medio de pago, cliente y documento (con ARCA / sin ARCA) ---
@@ -5875,7 +5903,7 @@ var QR = (function(){
         '<div class="note" id="f-fiscal-note" style="margin-top:12px"><span class="ic">ℹ</span><div></div></div>' +
         '<label class="chk" style="margin-top:12px"><input type="checkbox" id="f-print"' + (S.db.cfg.imprimirSiempre ? ' checked' : '') + '> <span>Imprimir al confirmar</span></label>',
       onOpen:function(box){
-        var modo = porDefecto, dt = desdePresu ? 'R' : 'X';
+        var modo = (!ctx && S.posArca) ? S.posArca : porDefecto, dt = desdePresu ? 'R' : 'X';
         var cond = $('#f-cond', box), tipo = $('#f-tipo', box), desc = $('#f-desc', box);
         if(desdePresu && desdePresu.desc){ desc.value = desdePresu.desc; }
         function sync(){
@@ -5910,6 +5938,7 @@ var QR = (function(){
           var bOk = $('[data-mb="1"]', box);
           if(bOk) bOk.textContent = esPresu ? 'Emitir presupuesto' : 'Confirmar cobro';
           box._doc = { modo:modo, tipo:t };
+          if(!ctx){ S.posArca = modo === porDefecto ? null : modo; }
         }
         $$('[data-arca]', box).forEach(function(b){
           b.addEventListener('click', function(){ modo = b.getAttribute('data-arca'); sync(); });
@@ -5920,6 +5949,11 @@ var QR = (function(){
         cond.addEventListener('change', sync);
         tipo.addEventListener('change', function(){ tipo._touched = true; sync(); });
         desc.addEventListener('input', sync);
+        if(!ctx && S.posPago){
+          var sp = $('#f-pago', box);
+          if(sp && Object.keys(PAGO_NOM).indexOf(S.posPago) !== -1) sp.value = S.posPago;
+        }
+        $('#f-pago', box).addEventListener('change', function(){ if(!ctx) S.posPago = $('#f-pago', box).value; });
         sync();
       },
       buttons:[
@@ -6014,7 +6048,7 @@ var QR = (function(){
       }
       if(ctx && ctx.ot){ ctx.ot.estado = 'entregada'; ctx.ot.cobradaTs = Date.now(); }
     }
-    if(!ctx) S.ticket = [];
+    if(!ctx){ S.ticket = []; S.posSel = null; S.posArca = null; S.posPago = null; }
     clienteMostrar(null);
 
     audit(esPresu ? 'documento.presupuesto' : 'venta',
@@ -6377,6 +6411,273 @@ var QR = (function(){
           refresh(); closeModal();
           toast(presu ? 'Presupuesto anulado' : 'Venta anulada', 'ok');
         }, true);
+  }
+  /* =======================================================================
+     14b. VENDER: edición de líneas y atajos F1–F12
+     Se agrega como módulo aparte: no cambia el flujo de cobro existente,
+     sólo lo maneja con teclado. Todo cambio de precio queda en auditoría.
+     ======================================================================= */
+  var POS_KEYS = [
+    { n:1,  t:'Efectivo' },        { n:2,  t:'Tarjeta débito' }, { n:3,  t:'Tarjeta crédito' },
+    { n:4,  t:'Cuenta corriente' },{ n:5,  t:'Nota de crédito' },{ n:6,  t:'Reintegro' },
+    { n:7,  t:'Borrar operación' },{ n:8,  t:'Con ARCA' },       { n:9,  t:'Cantidad' },
+    { n:10, t:'Precio' },          { n:11, t:'Buscar' },         { n:12, t:'Cobrar' }
+  ];
+  var POS_KEY_PAGO = { 1:'efectivo', 2:'debito', 3:'credito', 4:'cuenta' };
+
+  function posModoArca(){ return S.posArca || arcaPorDefecto(); }
+
+  function posKeysBar(){
+    var el = $('#pos-keys');
+    if(!el) return;
+    var modo = posModoArca();
+    el.innerHTML = POS_KEYS.map(function(k){
+      var t = k.n === 8 ? (modo === 'con' ? 'Con ARCA' : 'Sin ARCA') : k.t;
+      var on = POS_KEY_PAGO[k.n] && S.posPago === POS_KEY_PAGO[k.n];
+      var cls = 'fk' + (k.n === 12 ? ' gold' : '') + (k.n === 7 ? ' dang' : '') + (k.n === 8 ? (modo === 'con' ? ' con' : ' sin') : '') + (on ? ' on' : '');
+      return '<button type="button" class="' + cls + '" data-fk="' + k.n + '" title="Atajo: tecla F' + k.n + '">' +
+             '<span>' + esc(t) + '</span><kbd>F' + k.n + '</kbd></button>';
+    }).join('');
+    $$('#pos-keys [data-fk]').forEach(function(b){
+      b.addEventListener('click', function(){ posAtajo(+b.getAttribute('data-fk')); });
+    });
+  }
+
+  function posItemSel(){
+    var it = S.ticket.filter(function(x){ return x.id === S.posSel; })[0];
+    return it || S.ticket[S.ticket.length - 1] || null;
+  }
+
+  /* --- editor de línea: cantidad, precio unitario e importe enlazados --- */
+  function posEditarLinea(id, foco){
+    var it = S.ticket.filter(function(x){ return x.id === id; })[0];
+    var p = prodById(id);
+    if(!it || !p) return;
+    var porPeso = !!(it.u && it.u !== 'u');
+    var precio0 = it.precio;
+    modal({
+      title:'Editar ' + it.nom, slim:true,
+      sub:'Cambiá la cantidad y/o el importe. Todo cambio de precio queda en la auditoría.',
+      body:
+        '<div class="grid-f">' +
+          '<div class="f"><label for="le-q">Cantidad' + (porPeso ? ' (' + esc(it.u) + ')' : '') + '</label>' +
+            '<input class="inp" id="le-q" type="number" inputmode="decimal" min="0" step="' + (porPeso ? '0.001' : '1') + '" value="' + it.q + '"></div>' +
+          '<div class="f"><label for="le-p">Precio ' + (porPeso ? 'por ' + esc(it.u) : 'unitario') + '</label>' +
+            '<input class="inp" id="le-p" type="number" inputmode="decimal" min="0" step="0.01" value="' + it.precio + '"></div>' +
+          '<div class="f"><label for="le-i">Importe de la línea</label>' +
+            '<input class="inp" id="le-i" type="number" inputmode="decimal" min="0" step="0.01" value="' + redondear(it.precio * it.q) + '"></div>' +
+        '</div>' +
+        '<div class="help" style="margin-top:8px" id="le-h"></div>',
+      onOpen:function(box){
+        var q = $('#le-q', box), pr = $('#le-p', box), im = $('#le-i', box), h = $('#le-h', box);
+        function ayuda(){
+          h.textContent = porPeso
+            ? 'Si cambiás el importe se recalcula la cantidad (peso) con el precio por ' + it.u + '.'
+            : 'Si cambiás el importe se recalcula el precio unitario (cantidad fija); precio de lista: ' + money(p.precio) + '.';
+        }
+        ayuda();
+        q.addEventListener('input', function(){ im.value = redondear(toNum(pr.value) * toNum(q.value)); });
+        pr.addEventListener('input', function(){ im.value = redondear(toNum(pr.value) * toNum(q.value)); });
+        im.addEventListener('input', function(){
+          var imp = toNum(im.value);
+          if(porPeso){ var pp = toNum(pr.value); if(pp > 0) q.value = Math.round(imp / pp * 1000) / 1000; }
+          else { var qq = toNum(q.value); if(qq > 0) pr.value = redondear(imp / qq); }
+        });
+        var f = foco === 'p' ? pr : (foco === 'i' ? im : q);
+        setTimeout(function(){ try{ f.focus(); f.select(); }catch(e){} }, 80);
+        box.addEventListener('keydown', function(e){
+          if(e.key === 'Enter'){ e.preventDefault(); var ok = box.querySelector('[data-mb="1"]'); if(ok) ok.click(); }
+        });
+      },
+      buttons:[
+        { t:'Cancelar', cls:'ghost' },
+        { t:'Aplicar', cls:'gold', fn:function(box){
+            var q = toNum($('#le-q', box).value), pr = redondear(toNum($('#le-p', box).value));
+            if(porPeso) q = Math.round(q * 1000) / 1000; else q = Math.round(q);
+            if(!(q > 0)){ toast('La cantidad tiene que ser mayor a cero', 'bad'); return false; }
+            if(!(pr > 0)){ toast('El precio tiene que ser mayor a cero', 'bad'); return false; }
+            if(q > (p.stock || 0) + 0.0005 && !S.db.cfg.permitirSinStock){
+              toast('No hay stock suficiente de ' + p.nom + ' (hay ' + fmtCant(p.stock || 0, p.unidad) + ')', 'bad');
+              return false;
+            }
+            it.q = q; it.precio = pr;
+            if(pr !== precio0){
+              audit('venta.precio_modificado', it.nom + ': ' + money(precio0) + ' → ' + money(pr) + ' (lista ' + money(p.precio) + ')');
+            }
+            S.posSel = id;
+            posTicket(); posGrid();
+          } }
+      ]
+    });
+  }
+
+  function posCantidadLinea(id){
+    var it = S.ticket.filter(function(x){ return x.id === id; })[0], p = prodById(id);
+    if(!it || !p) return;
+    var porPeso = it.u && it.u !== 'u';
+    teclado({ titulo:p.nom + ' · cantidad', decimales:porPeso, sufijo:it.u || 'u', valor:it.q, max:7,
+      onOk:function(q){ if(q >= 0) addTicket(id, (porPeso ? Math.round(q * 1000) / 1000 : Math.round(q)) - it.q); } });
+  }
+
+  /* --- borrar toda la operación: doble confirmación --- */
+  function posBorrarOperacion(){
+    if(!S.ticket.length){ toast('No hay ninguna operación en curso', 'bad'); return; }
+    var tot = ticketTotal(), n = S.ticket.length;
+    ask('Borrar la operación (1 de 2)', 'Se van a descartar ' + n + (n === 1 ? ' ítem' : ' ítems') + ' por ' + money(tot) + '. Todavía no se cobró nada.',
+      function(){
+        setTimeout(function(){
+          ask('Borrar la operación (2 de 2)', 'Última confirmación: ¿borrás definitivamente la operación de ' + money(tot) + '?', function(){
+            S.ticket = []; S.posSel = null; S.posArca = null; S.posPago = null;
+            clienteMostrar(null);
+            audit('venta.operacion_borrada', n + ' ítems · ' + money(tot));
+            posTicket(); posGrid(); posKeysBar();
+            toast('Operación borrada', 'ok');
+          }, true);
+        }, 60);
+      }, true);
+  }
+
+  /* --- F5: nota de crédito / anulación sobre una venta ya emitida --- */
+  function posNotaCredito(){
+    var lista = S.db.ventas.filter(function(v){ return v.estado === 'ok' && esVenta(v); })
+      .sort(function(a, b){ return b.ts - a.ts; }).slice(0, 30);
+    if(!lista.length){ toast('Todavía no hay ventas para acreditar', 'bad'); return; }
+    if(S.rol !== 'admin'){ toast('La nota de crédito y las anulaciones las autoriza un administrador', 'bad'); return; }
+    modal({
+      title:'Nota de crédito', sub:'Elegí la venta que se corrige (las últimas 30)', wide:true,
+      body:'<div class="f"><input class="inp" id="nc-f" type="search" placeholder="Filtrar por número, cliente o importe" aria-label="Filtrar ventas"></div>' +
+        '<div class="rowlist" id="nc-l" style="margin-top:10px;max-height:46vh;overflow:auto"></div>',
+      onOpen:function(box){
+        var l = $('#nc-l', box);
+        function pintar(){
+          var f = clean($('#nc-f', box).value, 40).toLowerCase();
+          var vis = lista.filter(function(v){
+            var cl = v.clienteId ? cliById(v.clienteId) : null;
+            return !f || (('#' + v.nro + ' ' + (cl ? cl.nom : '') + ' ' + v.total).toLowerCase().indexOf(f) !== -1);
+          });
+          l.innerHTML = vis.length ? vis.map(function(v){
+            var cl = v.clienteId ? cliById(v.clienteId) : null;
+            var fisc = esFiscal(v) && v.arca === 'facturada';
+            return '<button type="button" class="r" data-ncv="' + esc(v.id) + '" style="width:100%;text-align:left;cursor:pointer;background:none;border:0;border-bottom:1px solid var(--p-line-2)">' +
+              '<span class="nm">#' + esc(v.nro) + ' · ' + esc(DOC_NOM[v.doc ? v.doc.tipo : v.fiscal.tipo] || '') +
+              '<span class="mt"> · ' + esc(fechaCorta(v.ts)) + (cl ? ' · ' + esc(cl.nom) : '') + ' · ' + (fisc ? 'nota de crédito' : 'anulación') + '</span></span>' +
+              '<span class="vl">' + money(v.total) + '</span></button>';
+          }).join('') : '<div class="empty">Ninguna venta coincide.</div>';
+          $$('[data-ncv]', l).forEach(function(b){
+            b.addEventListener('click', function(){
+              var v = S.db.ventas.filter(function(x){ return x.id === b.getAttribute('data-ncv'); })[0];
+              closeModal();
+              if(!v) return;
+              setTimeout(function(){ if(esFiscal(v) && v.arca === 'facturada') notaDeCredito(v); else anularVenta(v); }, 60);
+            });
+          });
+        }
+        $('#nc-f', box).addEventListener('input', pintar);
+        pintar();
+      },
+      buttons:[{ t:'Cerrar', cls:'ghost' }]
+    });
+  }
+
+  /* --- F6: reintegro / reembolso en efectivo al cliente --- */
+  function posReintegro(){
+    var t = turnoAbierto();
+    if(!t){ toast('Abrí la caja para registrar un reintegro', 'bad'); return; }
+    modal({
+      title:'Reintegro / reembolso', slim:true,
+      sub:'Sale efectivo de la caja y queda en la auditoría',
+      body:'<div class="f"><label for="rb-m">Monto a devolver</label><input class="inp big" id="rb-m" type="number" inputmode="decimal" min="0" step="100" value="0"></div>' +
+        '<div class="f" style="margin-top:12px"><label for="rb-d">Motivo <span class="help">(obligatorio)</span></label>' +
+        '<input class="inp" id="rb-d" type="text" maxlength="60" placeholder="Ej.: devolución de producto, venta #123"></div>',
+      buttons:[
+        { t:'Cancelar', cls:'ghost' },
+        { t:'Registrar reintegro', cls:'dang', fn:function(box){
+            var m = redondear(Math.max(0, toNum($('#rb-m', box).value))), d = clean($('#rb-d', box).value, 60);
+            if(m <= 0){ toast('Poné un monto mayor a cero', 'bad'); return false; }
+            if(d.length < 3){ toast('Escribí el motivo del reintegro', 'bad'); return false; }
+            t.movs.push({ ts:Date.now(), tipo:'egreso', monto:m, det:'Reintegro: ' + d });
+            audit('caja.reintegro', money(m) + ' · ' + d);
+            refresh();
+            toast('Reintegro de ' + money(m) + ' registrado', 'ok');
+          } }
+      ]
+    });
+  }
+
+  function posBuscar(){
+    if(S.sec !== 'vender') go('vender');
+    setTimeout(function(){ var q = $('#pos-q'); if(q){ try{ q.focus(); q.select(); }catch(e){} } }, 40);
+  }
+
+  function posCobrar(pago, foco){
+    if(!S.ticket.length){ toast('Agregá productos antes de cobrar', 'bad'); return; }
+    if(pago) S.posPago = pago;
+    posKeysBar();
+    cobrarModal(S.ticket.slice(), null);
+    if(foco) setTimeout(function(){ var e = $(foco); if(e) try{ e.focus(); }catch(x){} }, 120);
+  }
+
+  /* despachador único: lo usan la barra de botones y el teclado físico */
+  function posAtajo(n){
+    var box = $('#erp-modal-box');
+    var cobroAbierto = $('#erp-modal').classList.contains('open') && box.querySelector('#f-pago');
+    if(cobroAbierto){
+      /* con el cobro abierto, las teclas lo manejan desde adentro */
+      if(POS_KEY_PAGO[n]){
+        var sel = $('#f-pago', box);
+        sel.value = POS_KEY_PAGO[n]; sel.dispatchEvent(new Event('change', { bubbles:true }));
+        S.posPago = POS_KEY_PAGO[n];
+        if(n === 4){ var c = $('#f-cli', box); if(c) c.focus(); }
+      } else if(n === 8){
+        var on = box.querySelector('.arca-op.on');
+        var otro = box.querySelector('[data-arca="' + (on && on.getAttribute('data-arca') === 'con' ? 'sin' : 'con') + '"]');
+        if(otro) otro.click();
+        var mw = $('#f-motivo-w', box);
+        if(mw && mw.style.display !== 'none') $('#f-motivo', box).focus();
+      } else if(n === 12){
+        var ok = box.querySelector('[data-mb="1"]'); if(ok) ok.click();
+      }
+      return;
+    }
+    if($('#erp-modal').classList.contains('open')) return;
+    if(S.sec !== 'vender') return;
+    var it;
+    switch(n){
+      case 1: case 2: case 3: posCobrar(POS_KEY_PAGO[n]); break;
+      case 4: posCobrar('cuenta', '#f-cli'); break;
+      case 5: posNotaCredito(); break;
+      case 6: posReintegro(); break;
+      case 7: posBorrarOperacion(); break;
+      case 8:
+        S.posArca = posModoArca() === 'con' ? 'sin' : 'con';
+        posKeysBar();
+        toast('Esta operación: ' + (S.posArca === 'con' ? 'Con ARCA (comprobante fiscal)' : 'Sin ARCA (documento interno)'), 'ok');
+        break;
+      case 9:
+        it = posItemSel(); if(!it){ toast('Primero agregá un producto', 'bad'); return; }
+        posCantidadLinea(it.id); break;
+      case 10:
+        it = posItemSel(); if(!it){ toast('Primero agregá un producto', 'bad'); return; }
+        posEditarLinea(it.id, 'p'); break;
+      case 11: posBuscar(); break;
+      case 12: posCobrar(null); break;
+    }
+  }
+
+  /* teclado físico: sólo F1–F12 y sólo en Vender (o dentro del cobro) */
+  function posTeclaGlobal(e){
+    if(!S.db || !$('#erp').classList.contains('open')) return false;
+    var m = /^F(\d{1,2})$/.exec(e.key || '');
+    if(!m) return false;
+    var n = +m[1];
+    if(n < 1 || n > 12) return false;
+    var modalAbierto = $('#erp-modal').classList.contains('open');
+    var cobro = modalAbierto && $('#erp-modal-box').querySelector('#f-pago');
+    if(S.sec !== 'vender' && !cobro) return false;
+    if(modalAbierto && !cobro){ if(n === 5 || n === 11 || n === 12) e.preventDefault(); return true; }
+    e.preventDefault();
+    posAtajo(n);
+    return true;
   }
 
   /* =======================================================================
@@ -14081,7 +14382,7 @@ var QR = (function(){
       gErr('g-ayuda-err', (e.red ? 'No hay conexión a internet.' : (/n[uú]mero|muchos|recibimos|contactarte/i.test(e.message) ? e.message : 'No se pudo enviar el pedido.')) + ' Escribinos por WhatsApp o correo con los botones de abajo.');
     });
   }
-  var APP_VERSION = '1.5.2';
+  var APP_VERSION = '1.5.3';
 
   function wireRecuperacion(){
     $('#g-recup-open').addEventListener('click', abrirRecuperar);
@@ -15660,13 +15961,13 @@ var QR = (function(){
 
     /* --- atajos de teclado para el mostrador --- */
     D.addEventListener('keydown', function(e){
+      if(posTeclaGlobal(e)) return;
       if(!S.db || !$('#erp').classList.contains('open')) return;
       if($('#erp-modal').classList.contains('open')) return;
       if(e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
       if(e.key === 'F2'){ e.preventDefault(); go('vender'); }
       if(e.key === 'F3'){ e.preventDefault(); go('caja'); }
       if(e.key === 'F4'){ e.preventDefault(); go('clientes'); }
-      if(e.key === 'F9' && S.sec === 'vender' && S.ticket.length){ e.preventDefault(); cobrarModal(S.ticket.slice(), null); }
     });
 
     /* guardado inmediato al cerrar la pestaña */
