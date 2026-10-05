@@ -3585,7 +3585,8 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
       <button class="nav" type="button" data-go="config"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 7.4h9.2M18.6 7.4h1.8M3.6 16.6h3.8M13.4 16.6h7"/><circle cx="15.6" cy="7.4" r="2.3"/><circle cx="10" cy="16.6" r="2.3"/></svg></span><span class="tx" data-i18n="nav.config">Administración</span></button>
 
       <div class="side-foot">
-        <b>Sistema RAVE</b> v1.4<br>
+        <b>Sistema RAVE</b> v1.5<br>
+
         <span id="erp-foot-mode">Archivo único · datos locales</span><br>
         <a class="dev-link" href="https://wa.me/5493875143900?text=Hola%20Rave%20Holding!%20Quiero%20el%20Sistema%20RAVE%20para%20mi%20negocio." target="_blank" rel="noopener">Desarrollado por <b>Rave Holding</b> · Salta</a>
       </div>
@@ -6357,7 +6358,27 @@ var QR = (function(){
     var valor = sum(ps, function(p){ return (p.costo||0) * (p.stock||0); });
     var venta = sum(ps, function(p){ return (p.precio||0) * (p.stock||0); });
 
-    $('#inv-wrap').innerHTML =
+    var rubOn = lqActivo(), rubK = lqCfg();
+    var cuentaRub = {};
+    ps.forEach(function(p){ var a = lqAreaDe(p), id = a ? a.id : '_sin'; cuentaRub[id] = (cuentaRub[id] || 0) + 1; });
+    var barraRub = rubOn
+      ? '<div class="card" style="margin-bottom:16px"><div class="c-head"><span class="c-ttl">Rubros</span>' +
+          (S.rol === 'admin' ? '<button class="btn xs ghost" type="button" id="inv-rub-cfg">Configurar</button>' : '') + '</div>' +
+        '<div class="inline" style="flex-wrap:wrap;gap:8px" id="inv-rub-chips">' +
+          '<button type="button" class="btn xs gold" data-rubf="">Todos · ' + ps.length + '</button>' +
+          rubK.areas.map(function(a){
+            return '<button type="button" class="btn xs ghost" data-rubf="' + esc(a.id) + '" style="border-color:' + lqColorArea(a.id) + '">' +
+                   esc(a.nom) + (a.dueno ? ' (' + esc(a.dueno) + ')' : '') + ' · ' + (cuentaRub[a.id] || 0) + '</button>';
+          }).join('') +
+          (cuentaRub._sin ? '<button type="button" class="btn xs ghost" data-rubf="_sin">Sin rubro · ' + cuentaRub._sin + '</button>' : '') +
+        '</div></div>'
+      : (S.rol === 'admin'
+          ? '<div class="card soft" style="margin-bottom:16px"><div class="c-head"><span class="c-ttl">Rubros</span></div>' +
+            '<div class="kpi-sub">Todavía no definiste los rubros del negocio (Almacén, Bebidas, Panadería...).</div>' +
+            '<div style="margin-top:10px"><button class="btn sm gold" type="button" id="inv-rub-cfg">Definir rubros</button></div></div>'
+          : '');
+
+    $('#inv-wrap').innerHTML = barraRub +
       '<div class="bento" style="margin-bottom:16px">' +
         '<div class="card b3"><div class="c-head"><span class="c-ttl">Productos</span></div>' +
           '<div class="kpi sm">' + ps.filter(function(p){ return p.activo !== false; }).length + '</div>' +
@@ -6375,7 +6396,12 @@ var QR = (function(){
         tools:'<div class="dt-tools"><div class="search"><input class="inp" id="inv-q" type="search" placeholder="Buscar por nombre, categoría o código..." autocomplete="off"></div>' +
               '<div class="inv-masivo" id="inv-masivo"><span id="inv-sel-n">0 seleccionados</span>' +
                 '<button class="btn xs" type="button" id="inv-pub" disabled>Publicar en el menú</button>' +
-                '<button class="btn xs" type="button" id="inv-despub" disabled>Quitar del menú</button></div></div>',
+                '<button class="btn xs" type="button" id="inv-despub" disabled>Quitar del menú</button>' +
+                (rubOn ? '<select class="inp" id="inv-rub-sel" style="width:auto;min-height:36px" aria-label="Rubro para los seleccionados"><option value="">Pasar a rubro…</option>' +
+                  '<option value="__cat">Según su categoría</option>' +
+                  rubK.areas.map(function(a){ return '<option value="' + esc(a.id) + '">' + esc(a.nom) + '</option>'; }).join('') + '</select>' +
+                  '<button class="btn xs" type="button" id="inv-rub-set" disabled>Aplicar rubro</button>' : '') +
+              '</div></div>',
         cols:[
           { l:'', cls:'c', sort:false, v:function(p){
               return '<input type="checkbox" class="inv-ck" data-sel="' + esc(p.id) + '" aria-label="Seleccionar ' + esc(p.nom) + '">'; } },
@@ -6389,12 +6415,13 @@ var QR = (function(){
                      (p.unidad && p.unidad !== 'u' ? ' · por ' + esc(p.unidad) : '') + ' · ' + pub + '</div>'; },
             srt:function(p){ return p.nom; } },
           { l:'Precio', cls:'r', v:function(p){ return '<span class="num">' + money(p.precio) + '</span>'; }, srt:function(p){ return p.precio; } },
-          { l:'Costo', cls:'r hide-m', v:function(p){ return '<span class="num muted">' + (p.costo ? money(p.costo) : '—') + '</span>'; }, srt:function(p){ return p.costo||0; } },
-          { l:'Margen', cls:'r hide-m', v:function(p){
-              if(!p.costo) return '<span class="muted">—</span>';
-              var m = ((p.precio - p.costo) / p.precio) * 100;
-              return '<span class="num ' + (m < 15 ? 'muted' : '') + '">' + pct(m) + '</span>'; },
-            srt:function(p){ return p.costo ? ((p.precio-p.costo)/p.precio)*100 : -1; } },
+          { l:'Costo', cls:'r hide-m', v:function(p){
+              var m = p.costo && p.precio > 0 ? ' <div class="tdm">margen ' + pct(((p.precio - p.costo) / p.precio) * 100) + '</div>' : '';
+              return '<span class="num muted">' + (p.costo ? money(p.costo) : '—') + '</span>' + m; }, srt:function(p){ return p.costo||0; } },
+          { l:'Rubro', cls:'rb-cell', v:function(p){
+              if(rubOn) return '<span data-rb="' + esc((lqAreaDe(p) || {id:'_sin'}).id) + '">' + lqPillArea(lqAreaDe(p)) + '</span>';
+              return '<span class="pill">' + esc(catNom(p.cat)) + '</span>'; },
+            srt:function(p){ var a = lqAreaDe(p); return a ? a.nom : (rubOn ? 'zzz' : catNom(p.cat)); } },
           { l:'Stock', cls:'c', v:function(p){
               var s = p.stock || 0;
               var cl = s <= 0 ? 'bad' : (s <= (p.min||0) ? 'warn' : 'ok');
@@ -6409,13 +6436,26 @@ var QR = (function(){
         foot:'<span>' + ps.length + ' productos</span><span class="muted">El stock se descuenta solo con cada venta y vuelve si la anulás.</span>'
       });
 
-    var q = $('#inv-q');
-    if(q) q.addEventListener('input', function(){
-      var t = q.value.toLowerCase();
+    var q = $('#inv-q'), rubF = '';
+    function filtrar(){
+      var t = q ? q.value.toLowerCase() : '';
       $$('#inv-wrap .dt tbody tr').forEach(function(tr){
-        tr.style.display = tr.textContent.toLowerCase().indexOf(t) !== -1 ? '' : 'none';
+        var ok = tr.textContent.toLowerCase().indexOf(t) !== -1;
+        if(ok && rubF){ var m = tr.querySelector('[data-rb]'); ok = !!m && m.getAttribute('data-rb') === rubF; }
+        tr.style.display = ok ? '' : 'none';
+      });
+      if(typeof syncSel === 'function') syncSel();
+    }
+    if(q) q.addEventListener('input', filtrar);
+    $$('#inv-rub-chips [data-rubf]').forEach(function(b){
+      b.addEventListener('click', function(){
+        rubF = b.getAttribute('data-rubf');
+        $$('#inv-rub-chips [data-rubf]').forEach(function(x){ x.classList.toggle('gold', x === b); x.classList.toggle('ghost', x !== b); });
+        filtrar();
       });
     });
+    var bcfg = $('#inv-rub-cfg');
+    if(bcfg) bcfg.addEventListener('click', lqConfig);
     $$('#inv-wrap [data-ip]').forEach(function(b){
       b.addEventListener('click', function(){ prodModal(b.getAttribute('data-ip')); });
     });
@@ -6429,6 +6469,7 @@ var QR = (function(){
       var n = selIds().length;
       $('#inv-sel-n').textContent = n + (n === 1 ? ' seleccionado' : ' seleccionados');
       $('#inv-pub').disabled = !n || S.rol !== 'admin'; $('#inv-despub').disabled = !n || S.rol !== 'admin';
+      var rs = $('#inv-rub-set'); if(rs) rs.disabled = !n || S.rol !== 'admin' || !$('#inv-rub-sel').value;
     }
     $$('#inv-wrap [data-sel]').forEach(function(c){ c.addEventListener('change', syncSel); });
     var th0 = $('#inv-wrap .dt thead th');
@@ -6445,6 +6486,18 @@ var QR = (function(){
       audit(pub ? 'menu.publicado_lote' : 'menu.despublicado_lote', ids.length + ' productos');
       espejarMenu(); refresh();
       toast(ids.length + ' productos ' + (pub ? 'publicados en' : 'quitados de') + ' el menú digital', 'ok');
+    }
+    var rsel = $('#inv-rub-sel');
+    if(rsel){
+      rsel.addEventListener('change', syncSel);
+      $('#inv-rub-set').addEventListener('click', function(){
+        var ids = selIds(), v = rsel.value;
+        if(!ids.length || !v || S.rol !== 'admin') return;
+        ids.forEach(function(id){ var p = prodById(id); if(p){ if(v === '__cat') delete p.area; else p.area = v; } });
+        audit('producto.rubro_lote', ids.length + ' productos → ' + (v === '__cat' ? 'según categoría' : v));
+        refresh();
+        toast(ids.length + ' productos pasados de rubro', 'ok');
+      });
     }
     $('#inv-pub').addEventListener('click', function(){ masivo(true); });
     $('#inv-despub').addEventListener('click', function(){ masivo(false); });
@@ -6476,6 +6529,10 @@ var QR = (function(){
               }).join('') +
             '</select>' +
             '<button class="btn xs ghost" type="button" id="p-cats-abm" style="margin-top:6px">Administrar categorías</button></div>' +
+          (lqActivo() ? '<div class="f"><label for="p-area">Rubro</label><select class="inp" id="p-area">' +
+              '<option value="">Según su categoría</option>' +
+              lqCfg().areas.map(function(a){ return '<option value="' + esc(a.id) + '"' + (p && p.area === a.id ? ' selected' : '') + '>' + esc(a.nom) + (a.dueno ? ' (' + esc(a.dueno) + ')' : '') + '</option>'; }).join('') +
+            '</select><span class="help">Decide en qué rubro suma su venta en el cierre de caja.</span></div>' : '') +
           '<div class="f"><label for="p-sub">Subtítulo <span class="help">(medida, variedad)</span></label>' +
             '<input class="inp" id="p-sub" type="text" maxlength="40" value="' + esc(p ? (p.sub||'') : '') + '" placeholder="2.25 lt"></div>' +
           '<div class="f"><label for="p-grupo">Agrupar bajo <span class="help">(bodega o marca)</span></label>' +
@@ -6580,6 +6637,7 @@ var QR = (function(){
               plu:digits($('#p-plu', box).value, 6),
               desc:clean($('#p-desc', box).value, 160)
             };
+            if($('#p-area', box)){ var ar = $('#p-area', box).value; if(ar) datos.area = ar; else if(p) delete p.area; }
             if(datos.plu && S.db.prod.some(function(x){ return x.plu === datos.plu && (!p || x.id !== p.id); })){
               toast('Ese código de balanza ya lo usa otro producto', 'bad'); return false;
             }
@@ -13930,7 +13988,7 @@ var QR = (function(){
       gErr('g-ayuda-err', (e.red ? 'No hay conexión a internet.' : (/n[uú]mero|muchos|recibimos|contactarte/i.test(e.message) ? e.message : 'No se pudo enviar el pedido.')) + ' Escribinos por WhatsApp o correo con los botones de abajo.');
     });
   }
-  var APP_VERSION = '1.4';
+  var APP_VERSION = '1.5';
 
   function wireRecuperacion(){
     $('#g-recup-open').addEventListener('click', abrirRecuperar);
@@ -14024,10 +14082,10 @@ var QR = (function(){
 
   /* ---------------------------- EXPORTAR ---------------------------- */
   function ixExpArticulos(){
-    var rows = [['id','sku','nombre','rubro','precio','costo','stock','minimo','unidad','codigo_barras','alcohol','en_menu','activo']];
+    var rows = [['id','sku','nombre','rubro','precio','costo','stock','minimo','unidad','codigo_barras','alcohol','en_menu','activo','rubro_cierre']];
     S.db.prod.forEach(function(p){
       rows.push([p.id, p.sku || '', p.nom, catNom(p.cat), p.precio, p.costo || 0, p.stock || 0, p.min || 0,
-                 p.unidad || 'u', p.cb || '', p.alc ? 'si' : 'no', p.menu ? 'si' : 'no', p.activo === false ? 'no' : 'si']);
+                 p.unidad || 'u', p.cb || '', p.alc ? 'si' : 'no', p.menu ? 'si' : 'no', p.activo === false ? 'no' : 'si', (lqAreaDe(p) || {}).nom || '']);
     });
     ixBajar('rave-articulos', rows);
     return rows.length - 1;
@@ -14654,6 +14712,35 @@ var QR = (function(){
     return socios.map(function(a, i){ return rep ? (a.dueno || a.nom || '?').trim().slice(0, 3).toUpperCase() : ini[i]; });
   }
 
+  /* ---------------- rubro de un producto (Inventario) ----------------
+     Prioridad: rubro puesto en el producto (p.area) > rubro de su categoría > rubro por defecto. */
+  var LQ_COLORES = ['#b8862b', '#2f7d6d', '#7a4fb0', '#c2562f', '#2f6aa8', '#8a8a2f'];
+  function lqAreaId(p){
+    var k = lqCfg();
+    if(!p) return k.defArea || '';
+    var ids = k.areas.map(function(a){ return a.id; });
+    if(p.area && ids.indexOf(p.area) !== -1) return p.area;
+    var c = k.catArea[p.cat];
+    if(c && ids.indexOf(c) !== -1) return c;
+    return k.defArea && ids.indexOf(k.defArea) !== -1 ? k.defArea : '';
+  }
+  function lqAreaDe(p){
+    if(!lqActivo()) return null;
+    var id = lqAreaId(p), k = lqCfg();
+    for(var i = 0; i < k.areas.length; i++) if(k.areas[i].id === id) return k.areas[i];
+    return null;
+  }
+  function lqColorArea(id){
+    var k = lqCfg(), i = 0;
+    for(; i < k.areas.length; i++) if(k.areas[i].id === id) break;
+    return LQ_COLORES[i % LQ_COLORES.length];
+  }
+  function lqPillArea(a){
+    if(!a) return '<span class="pill warn">Sin rubro</span>';
+    return '<span class="pill" style="border-color:' + lqColorArea(a.id) + ';color:' + lqColorArea(a.id) + ';font-weight:600">' + esc(a.nom) + '</span>' +
+           (a.dueno ? '<div class="tdm">' + esc(a.dueno) + '</div>' : '');
+  }
+
   /* ---------------- ventas del turno, repartidas por rubro ---------------- */
   function lqAreasTurno(t){
     var k = lqCfg(), out = {}, orden = [];
@@ -14667,7 +14754,7 @@ var QR = (function(){
       var f = bruto > 0 ? (v.total || 0) / bruto : 1;            /* el descuento se reparte en proporción */
       (v.items || []).forEach(function(i){
         var p = prodById(i.id);
-        var aid = (p && lqCfg().catArea[p.cat]) || k.defArea || '_sin';
+        var aid = lqAreaId(p) || '_sin';
         var a = out[aid] || out._sin;
         var venta = i.q * i.precio * f, costo = i.q * (i.costo || 0);
         a.ventas += venta; a.costo += costo;
