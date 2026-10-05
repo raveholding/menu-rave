@@ -1,4 +1,4 @@
-SISTEMA RAVE 1.1 - Windows 10 y 11 (64 y 32 bits)
+SISTEMA RAVE 1.2 - Windows 10 y 11 (64 y 32 bits)
 =================================================
 
 INSTALAR
@@ -36,3 +36,10 @@ IMPRESORA DE TICKETS Y LECTOR DE CÓDIGOS
 Sistema RAVE · desarrollado por Rave Holding · Salta, Argentina
 ¿Querés un sistema así para tu comercio? WhatsApp +54 9 387 514-3900
 raveholding@gmail.com
+
+NOVEDADES DE LA 1.2
+- Compras y gastos con lectura de facturas (foto, PDF o imagen) y tablero de costos.
+- Auditoría de cajas cerradas con arqueo, medios de pago y notas de revisión.
+- Recuperación de contraseña con código de recuperación y pedido de ayuda a Rave Holding
+  (WhatsApp +54 9 387 514-3900 · raveholding@gmail.com).
+- GUARDÁ el código de recuperación que muestra el sistema: sin la contraseña ni el código, los datos no se pueden recuperar.

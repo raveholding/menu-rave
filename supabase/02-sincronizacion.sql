@@ -42,7 +42,9 @@ alter table public.registros enable row level security;
 -- (sin políticas de escritura, la única vía es la función sincronizar)
 drop policy if exists "leer registros de mi comercio" on public.registros;
 create policy "leer registros de mi comercio" on public.registros for select to authenticated
-  using (comercio_id in (select public.mis_comercios()));
+  using (comercio_id in (select public.mis_comercios())
+         -- compras y proveedores (v1.2): sólo el administrador
+         and (coleccion not in ('compras', 'proveedores') or public.rol_en(comercio_id) = 'admin'));
 
 revoke all on public.registros from anon;
 revoke insert, update, delete, truncate on public.registros from authenticated;
@@ -60,6 +62,8 @@ grant select on public.registros to authenticated;
 --   · Sólo se aceptan las colecciones del sistema.
 --   · Movimientos de stock, auditoría y fichadas se escriben UNA vez y no se
 --     tocan más (el dueño puede corregir fichadas).
+--   · Una caja cerrada no se modifica ni se borra (sólo notas de auditoría del admin).
+--   · Compras y proveedores: sólo el administrador (lee y escribe).
 --   · Mostrador y operador: no tocan productos, gastos ni personal; de la
 --     configuración sólo pueden cambiar la clave del Wi-Fi.
 --   · Un cambio con error se rechaza solo, sin trabar a los demás.
@@ -77,6 +81,8 @@ declare
   v_datos      jsonb;
   v_borrado    boolean;
   v_existe     jsonb;
+  v_rev_old    jsonb;
+  v_rev_new    jsonb;
   v_hay        boolean;
   v_aplicados  int := 0;
   v_rechazos   jsonb := '[]'::jsonb;
@@ -85,9 +91,10 @@ declare
   v_pasada     int;
   v_motivo     text;
   c_todas      constant text[] := array['prod','mov','ventas','turnos','gastos','clientes','pagosCta',
-                                        'mesas','mozos','ots','tecnicos','empleados','fichadas','audit','cfg'];
+                                        'mesas','mozos','ots','tecnicos','empleados','fichadas','audit','cfg',
+                                        'compras','proveedores'];
   c_una_vez    constant text[] := array['mov','audit','fichadas'];
-  c_solo_admin constant text[] := array['prod','gastos','empleados'];
+  c_solo_admin constant text[] := array['prod','gastos','empleados','compras','proveedores'];
   c_borra_todos constant text[] := array['clientes','mesas','mozos','tecnicos','ots'];
 begin
   v_rol := public.rol_en(p_comercio);
@@ -130,13 +137,47 @@ begin
 
         if v_motivo is null then
           select datos, true into v_existe, v_hay from public.registros
-           where comercio_id = p_comercio and coleccion = v_col and id = v_id;
+           where comercio_id = p_comercio and coleccion = v_col and id = v_id
+             for update;
           v_hay := coalesce(v_hay, false);
 
           if v_col = any(c_una_vez) and v_hay and not (v_admin and v_col = 'fichadas') then
             -- ya estaba: se da por aplicado y no se toca
             v_aplicados := v_aplicados + 1;
             continue;
+          end if;
+
+          -- Una caja CERRADA queda congelada: nadie la cambia ni la borra.
+          -- El administrador sólo puede sumarle notas de auditoría ("revision").
+          if v_motivo is null and v_col = 'turnos' and v_hay and (v_existe->>'cerrado') is not null then
+            if v_borrado then
+              v_motivo := 'una caja cerrada no se borra';
+            else
+              -- Notas de auditoría: sólo se pueden AGREGAR al final (las anteriores no se tocan),
+              -- con el usuario verificado por el servidor y el texto recortado.
+              v_rev_old := case when jsonb_typeof(v_existe->'revision') = 'array' then v_existe->'revision' else '[]'::jsonb end;
+              v_rev_new := v_datos->'revision';
+              v_datos := v_existe;
+              if v_admin and jsonb_typeof(v_rev_new) = 'array'
+                 and jsonb_array_length(v_rev_new) > jsonb_array_length(v_rev_old)
+                 and jsonb_array_length(v_rev_new) <= 100
+                 and (select coalesce(jsonb_agg(jsonb_build_object('ts', e->'ts', 'txt', e->'txt') order by i), '[]'::jsonb)
+                        from jsonb_array_elements(v_rev_new) with ordinality t(e, i)
+                       where i <= jsonb_array_length(v_rev_old))
+                     = (select coalesce(jsonb_agg(jsonb_build_object('ts', e->'ts', 'txt', e->'txt') order by i), '[]'::jsonb)
+                          from jsonb_array_elements(v_rev_old) with ordinality t(e, i)) then
+                v_datos := v_existe || jsonb_build_object('revision', v_rev_old || (
+                  select coalesce(jsonb_agg(jsonb_build_object(
+                           'ts', case when jsonb_typeof(e->'ts') = 'number' then e->'ts'
+                                      else to_jsonb((extract(epoch from clock_timestamp()) * 1000)::bigint) end,
+                           'u', left(coalesce(e->>'u', ''), 60),
+                           'uid', auth.uid()::text,
+                           'txt', left(coalesce(e->>'txt', ''), 200),
+                           'ok', coalesce((e->>'ok')::boolean, false)) order by i), '[]'::jsonb)
+                    from jsonb_array_elements(v_rev_new) with ordinality t(e, i)
+                   where i > jsonb_array_length(v_rev_old) and jsonb_typeof(e) = 'object'));
+              end if;
+            end if;
           end if;
 
           if v_col = 'cfg' and not v_admin then
@@ -202,7 +243,11 @@ begin
               borrado     = excluded.borrado,
               dispositivo = excluded.dispositivo,
               usuario_id  = excluded.usuario_id,
-              actualizado = clock_timestamp();
+              actualizado = clock_timestamp()
+          -- una caja ya cerrada (por otro dispositivo, en este mismo instante) no se pisa con una copia distinta
+          where registros.coleccion <> 'turnos'
+             or (registros.datos->>'cerrado') is null
+             or (excluded.datos->>'cerrado') = (registros.datos->>'cerrado');
         v_aplicados := v_aplicados + 1;
 
       exception when others then
