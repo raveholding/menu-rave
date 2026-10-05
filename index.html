@@ -3585,7 +3585,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
       <button class="nav" type="button" data-go="config"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 7.4h9.2M18.6 7.4h1.8M3.6 16.6h3.8M13.4 16.6h7"/><circle cx="15.6" cy="7.4" r="2.3"/><circle cx="10" cy="16.6" r="2.3"/></svg></span><span class="tx" data-i18n="nav.config">Administración</span></button>
 
       <div class="side-foot">
-        <b>Sistema RAVE</b> v1.3<br>
+        <b>Sistema RAVE</b> v1.4<br>
         <span id="erp-foot-mode">Archivo único · datos locales</span><br>
         <a class="dev-link" href="https://wa.me/5493875143900?text=Hola%20Rave%20Holding!%20Quiero%20el%20Sistema%20RAVE%20para%20mi%20negocio." target="_blank" rel="noopener">Desarrollado por <b>Rave Holding</b> · Salta</a>
       </div>
@@ -5019,7 +5019,7 @@ var QR = (function(){
     seqDocs();
     if(!c.arcaDef) c.arcaDef = { admin:'sin', mostrador:'sin', operador:'sin' };
     if(!c.ticketAncho) c.ticketAncho = '80';
-    ['prod','mov','ventas','turnos','gastos','compras','proveedores','clientes','mesas','mozos','ots','tecnicos','audit','nonces','pagosCta','empleados','fichadas'].forEach(function(k){
+    ['prod','mov','ventas','turnos','gastos','compras','proveedores','clientes','mesas','mozos','ots','tecnicos','audit','nonces','pagosCta','empleados','fichadas','liquidaciones'].forEach(function(k){
       if(!Array.isArray(d[k])) d[k] = [];
     });
     d.audit.forEach(function(a, i){ if(!a.id) a.id = 'a' + (a.ts || 0).toString(36) + i; });
@@ -5552,6 +5552,7 @@ var QR = (function(){
               closeModal();
               toast(Math.abs(t.dif) < 1 ? 'Caja cerrada, cuadró exacto' : 'Caja cerrada con diferencia de ' + money(t.dif),
                     Math.abs(t.dif) < 1 ? 'ok' : 'bad');
+              lqPostCierre(t);   /* cierre por rubros y reparto (sólo si está activado) */
             }).catch(function(){ toast('No se pudo cerrar la caja. Probá de nuevo.', 'bad'); });
             return false;
           } }
@@ -7695,7 +7696,7 @@ var QR = (function(){
     var rd = $('#k-reset-demo');
     if(rd) rd.addEventListener('click', function(){
       ask('Borrar historial', 'Se borran ventas, movimientos de stock, turnos de caja y gastos. Catálogo y clientes quedan.', function(){
-        S.db.ventas = []; S.db.mov = []; S.db.turnos = []; S.db.gastos = [];
+        S.db.ventas = []; S.db.mov = []; S.db.turnos = []; S.db.gastos = []; S.db.liquidaciones = [];
         S.db.seq = { venta:1, ot:(S.db.seq && S.db.seq.ot) || 1 };
         audit('sistema.historial_borrado', 'por ' + S.user);
         refresh();
@@ -8964,9 +8965,9 @@ var QR = (function(){
      add: se escribe una vez y no cambia más. */
   var NB_COLS = {
     prod:'del', mov:'add', ventas:'mod', turnos:'mod', gastos:'del', compras:'del', proveedores:'del', clientes:'del', pagosCta:'mod',
-    mesas:'del', mozos:'del', ots:'del', tecnicos:'del', empleados:'del', fichadas:'mod', audit:'add'
+    mesas:'del', mozos:'del', ots:'del', tecnicos:'del', empleados:'del', fichadas:'mod', audit:'add', liquidaciones:'mod'
   };
-  var NB_ORDEN = { mov:'ts', ventas:'ts', fichadas:'ts', audit:'ts', pagosCta:'ts', gastos:'ts', turnos:'abierto' };
+  var NB_ORDEN = { liquidaciones:'ts', mov:'ts', ventas:'ts', fichadas:'ts', audit:'ts', pagosCta:'ts', gastos:'ts', turnos:'abierto' };
 
   var NB = { gen:0, vivo:function(){ return false; }, conn:null, estado:'off', timer:null, tT:null, corriendo:null, otra:false, silencio:false,
              ultimo:null, err:null, pend:0, redibujar:false, menuErr:null, rechazos:null, fuera:false };
@@ -10076,6 +10077,7 @@ var QR = (function(){
           '<button class="btn gold" type="button" id="k-ix">Importar / Exportar todo</button></div>' +
       '</div>' +
 
+      lqCardHtml() +
       '<div class="card b6"><div class="c-head"><span class="c-ttl">Este equipo</span></div>' +
         '<div class="grid-f">' +
           '<div class="f"><label for="k-tactil">Modo táctil / POS</label><select class="inp" id="k-tactil">' +
@@ -10130,6 +10132,7 @@ var QR = (function(){
     });
     if((b = $('#k-importar'))) b.addEventListener('click', function(){ importarAsistente(); });
     if((b = $('#k-ix'))) b.addEventListener('click', ixAbrir);
+    lqBind();
     if((b = $('#k-tactil'))) b.addEventListener('change', function(e){ localSet('rave.tactil', e.target.value); aplicarTactil(); toast('Listo', 'ok'); });
     if((b = $('#k-inact'))) b.addEventListener('change', function(e){ localSet('rave.inact', e.target.value); reiniciarInactividad(); toast('Listo', 'ok'); });
     if((b = $('#k-kiosco'))) b.addEventListener('click', entrarKiosco);
@@ -13541,6 +13544,7 @@ var QR = (function(){
       '</div>';
     var botones = [{ t:'Cerrar', cls:'ghost' }, { t:'Imprimir', fn:function(){ imprimirFicha(t, rs, esperado, e, tl, recalc); return false; } }];
     if(admin) botones.push({ t:'Agregar nota de auditoría', cls:'gold', fn:function(){ notaRevision(t); return false; } });
+    if(admin && lqActivo()) botones.push({ t:'Rubros y reparto', cls:'pri', fn:function(){ lqAbrir(t.id); return false; } });
     modal({ title:'Cierre de caja · ' + fechaHoraExacta(t.cerrado).slice(0, 16), sub:nombreCajaDe(t), wide:true, body:html, buttons:botones,
       onOpen:function(){
         verificarSello(t).then(function(r){
@@ -13926,7 +13930,7 @@ var QR = (function(){
       gErr('g-ayuda-err', (e.red ? 'No hay conexión a internet.' : (/n[uú]mero|muchos|recibimos|contactarte/i.test(e.message) ? e.message : 'No se pudo enviar el pedido.')) + ' Escribinos por WhatsApp o correo con los botones de abajo.');
     });
   }
-  var APP_VERSION = '1.3';
+  var APP_VERSION = '1.4';
 
   function wireRecuperacion(){
     $('#g-recup-open').addEventListener('click', abrirRecuperar);
@@ -14608,6 +14612,459 @@ var QR = (function(){
         $('#ix-undo', box).addEventListener('click', function(){ closeModal(); setTimeout(ixDeshacerUltimo, 60); });
       },
       buttons:[{ t:'Cerrar', cls:'ghost' }]
+    });
+  }
+
+  /* =======================================================================
+     59. CIERRE POR RUBROS Y REPARTO DIARIO  (opcional · apagado por defecto)
+     ---------------------------------------------------------------------
+     Pensado para comercios con varios rubros de distintos dueños dentro de
+     un mismo mostrador (ej.: Almacén RAVE: Almacén-Juan, Bebidas-Nico,
+     Panadería-mamá, Sandwichería-papá).
+     · No toca el cierre de caja ni su sello de integridad: se calcula APARTE
+       y se guarda en la colección "liquidaciones" (una por turno cerrado).
+     · Mostrador total por un lado; cada rubro con lo vendido, la ganancia y
+       el detalle de productos.
+     · Reparto: la ganancia de los rubros que reparten (Almacén y Bebidas) se
+       divide entre sus responsables, después de sueldos del personal (por
+       horas fichadas), gastos e impuestos del día. Todo se puede modificar.
+     · Si no está activado, el sistema se comporta exactamente igual que antes.
+     ======================================================================= */
+  var LQ_SLOTS = 6;
+
+  function lqCfg(){
+    var c = S.db.cfg;
+    if(!c.cierreRubros) c.cierreRubros = { activo:false, areas:[], catArea:{}, defArea:'', emp:{} };
+    var k = c.cierreRubros;
+    if(!Array.isArray(k.areas)) k.areas = [];
+    if(!k.catArea) k.catArea = {};
+    if(!k.emp) k.emp = {};
+    return k;
+  }
+  function lqActivo(){
+    var k = S.db && S.db.cfg && S.db.cfg.cierreRubros;
+    return !!(k && k.activo && Array.isArray(k.areas) && k.areas.length);
+  }
+  function lqLista(){ return Array.isArray(S.db.liquidaciones) ? S.db.liquidaciones : (S.db.liquidaciones = []); }
+  function lqHoras(h){ return (Math.round((h || 0) * 100) / 100).toLocaleString('es-AR') + ' h'; }
+  function lqNombreUsuario(u){ u = String(u || ''); return (u.indexOf('@') > 0 ? u.slice(0, u.indexOf('@')) : u).toUpperCase(); }
+  function lqIniciales(socios){
+    var ini = socios.map(function(a){ return (a.dueno || a.nom || '?').trim().charAt(0).toUpperCase(); });
+    var rep = ini.some(function(x, i){ return ini.indexOf(x) !== i; });
+    return socios.map(function(a, i){ return rep ? (a.dueno || a.nom || '?').trim().slice(0, 3).toUpperCase() : ini[i]; });
+  }
+
+  /* ---------------- ventas del turno, repartidas por rubro ---------------- */
+  function lqAreasTurno(t){
+    var k = lqCfg(), out = {}, orden = [];
+    k.areas.forEach(function(a){
+      out[a.id] = { id:a.id, nom:a.nom, dueno:a.dueno || '', reparte:!!a.reparte, ventas:0, costo:0, ganancia:0, sinCosto:0, det:{} };
+      orden.push(a.id);
+    });
+    out._sin = { id:'_sin', nom:'Sin rubro asignado', dueno:'', reparte:false, ventas:0, costo:0, ganancia:0, sinCosto:0, det:{} };
+    S.db.ventas.filter(function(v){ return v.turnoId === t.id && esVenta(v); }).forEach(function(v){
+      var bruto = sum(v.items || [], function(i){ return i.q * i.precio; });
+      var f = bruto > 0 ? (v.total || 0) / bruto : 1;            /* el descuento se reparte en proporción */
+      (v.items || []).forEach(function(i){
+        var p = prodById(i.id);
+        var aid = (p && lqCfg().catArea[p.cat]) || k.defArea || '_sin';
+        var a = out[aid] || out._sin;
+        var venta = i.q * i.precio * f, costo = i.q * (i.costo || 0);
+        a.ventas += venta; a.costo += costo;
+        if(!(i.costo > 0)) a.sinCosto++;
+        var key = i.nom || (p && p.nom) || 'Producto';
+        var d = a.det[key] || (a.det[key] = { nom:key, q:0, total:0, u:i.u || 'u' });
+        d.q += i.q; d.total += venta;
+      });
+    });
+    var res = orden.map(function(id){ return out[id]; });
+    if(out._sin.ventas > 0.004 || out._sin.costo > 0.004) res.push(out._sin);
+    return res.map(function(a){
+      return {
+        id:a.id, nom:a.nom, dueno:a.dueno, reparte:a.reparte, ventas:r2(a.ventas), costo:r2(a.costo), ganancia:r2(a.ventas - a.costo), sinCosto:a.sinCosto,
+        det:Object.keys(a.det).map(function(x){ var d = a.det[x]; return { nom:d.nom, q:Math.round(d.q * 1000) / 1000, total:r2(d.total), u:d.u }; })
+              .sort(function(x, y){ return y.total - x.total; })
+      };
+    });
+  }
+  function lqNueva(t){
+    var k = lqCfg(), socios = k.areas.filter(function(a){ return a.reparte; });
+    var l = {
+      id:t.id, turnoId:t.id, ts:Date.now(), u:S.user, cerro:lqNombreUsuario(t.uCierre || t.u), fecha:t.cerrado, caja:nombreCajaDe(t),
+      areas:lqAreasTurno(t), sueldos:[], gastos:{ monto:0, det:'' }, impuestos:{}, parte:{}, nota:''
+    };
+    Object.keys(k.emp).forEach(function(eid){
+      var cfg = k.emp[eid], e = S.db.empleados.filter(function(x){ return x.id === eid; })[0];
+      if(!cfg || !cfg.on || !e) return;
+      var h = horasTrabajadas(eid, t.abierto, t.cerrado).horas, rate = Math.max(0, Number(cfg.rate) || 0);
+      l.sueldos.push({ emp:eid, nom:e.nom, horas:Math.round(h * 100) / 100, rate:rate, monto:r2(h * rate) });
+    });
+    /* "lo que merendó": gastos del turno cuyo detalle dice merienda; el resto se puede sumar a mano */
+    l.gastos.monto = r2(sum(S.db.gastos.filter(function(g){ return g.ts >= t.abierto && g.ts <= t.cerrado && /meriend/i.test((g.det || '') + ' ' + (g.cat || '')); }), function(g){ return g.monto; }));
+    l.gastos.det = l.gastos.monto ? 'merienda' : '';
+    socios.forEach(function(a){
+      l.impuestos[a.id] = Math.max(0, Number(a.impuesto) || 0);
+      l.parte[a.id] = a.pct != null ? Number(a.pct) : Math.round(10000 / socios.length) / 100;
+    });
+    return l;
+  }
+  function lqCalcular(l){
+    var soc = l.areas.filter(function(a){ return a.reparte; });
+    var pool = r2(sum(soc, function(a){ return a.ganancia; }));
+    var sueldo = r2(sum(l.sueldos, function(s){ return s.monto; })), gastos = r2(l.gastos.monto || 0);
+    var rest = { pool:pool, sueldo:sueldo, gastos:gastos }, filas = [];
+    soc.forEach(function(a, i){
+      var pc = l.parte && l.parte[a.id] != null ? Number(l.parte[a.id]) : 100 / soc.length;
+      var last = i === soc.length - 1;
+      var pg = last ? rest.pool : r2(pool * pc / 100), ps = last ? rest.sueldo : r2(sueldo * pc / 100), pga = last ? rest.gastos : r2(gastos * pc / 100);
+      rest.pool = r2(rest.pool - pg); rest.sueldo = r2(rest.sueldo - ps); rest.gastos = r2(rest.gastos - pga);
+      var imp = r2((l.impuestos || {})[a.id] || 0);
+      filas.push({ id:a.id, nom:a.nom, dueno:a.dueno, pc:pc, parteGan:pg, sueldo:ps, gastos:pga, imp:imp, gan:r2(pg - ps - pga - imp) });
+    });
+    return { pool:pool, sueldo:sueldo, gastos:gastos, filas:filas, impuestos:r2(sum(filas, function(f){ return f.imp; })), totalGan:r2(sum(filas, function(f){ return f.gan; })) };
+  }
+  function lqFechaTxt(ts){
+    var d = new Date(ts);
+    return d.getDate() + '/' + (d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(2) + ' ' + d.toLocaleDateString('es-AR', { weekday:'long' });
+  }
+  function lqM(n){ return (n < 0 ? '- ' : '') + money(Math.abs(n)); }   /* negativos: "- $ 24.316" */
+  function lqEtiqueta(a){ return a.nom + (a.dueno ? ' (' + a.dueno + ')' : ''); }
+
+  /* texto listo para copiar o mandar por WhatsApp */
+  function lqTexto(l, rs, calc){
+    var soc = l.areas.filter(function(a){ return a.reparte; }), ini = lqIniciales(soc), L = [];
+    L.push(lqFechaTxt(l.fecha) + ' cerró ' + (l.cerro || '—'));
+    L.push('');
+    L.push('MOSTRADOR TOTAL : ' + money(rs.totalVentas) + ' (' + rs.nVentas + ' ventas)');
+    var med = { efectivo:'Efectivo', debito:'Débito', credito:'Crédito', qr:'QR', transferencia:'Transferencia', cuenta:'Cuenta corriente' };
+    var m = Object.keys(rs.medios || {}).filter(function(x){ return rs.medios[x]; }).map(function(x){ return (med[x] || x) + ' ' + money(rs.medios[x]); });
+    if(m.length) L.push(m.join(' · '));
+    L.push('');
+    L.push('POR RUBRO :');
+    l.areas.forEach(function(a){ L.push(lqEtiqueta(a) + ' : vendió ' + money(a.ventas) + ' · ganancia ' + money(a.ganancia)); });
+    L.push('');
+    if(soc.length){
+      if(l.sueldos.length){
+        L.push(l.sueldos.map(function(s){ return s.nom.toUpperCase() + ' (' + lqHoras(s.horas) + ')'; }).join(', ') + ' empleado:');
+        soc.forEach(function(a, i){ var f = calc.filas[i]; L.push('SUELDO ' + ini[i] + ' : - ' + money(f.sueldo)); });
+      }
+      L.push('GASTOS : - ' + money(calc.gastos) + (l.gastos.det ? ' (' + l.gastos.det + ')' : '') + (soc.length > 1 ? ' · se reparte' : ''));
+      L.push('');
+      L.push('IMPUESTOS :');
+      calc.filas.forEach(function(f){ L.push((f.dueno || f.nom).toUpperCase() + ' : ' + money(f.imp)); });
+      L.push('');
+      L.push('GANANCIA :');
+      calc.filas.forEach(function(f){ L.push((f.dueno || f.nom).toUpperCase() + ' : ' + lqM(f.gan)); });
+      L.push('');
+    }
+    var otros = l.areas.filter(function(a){ return !a.reparte; });
+    otros.forEach(function(a){ L.push(lqEtiqueta(a) + ' : ' + money(a.ganancia)); });
+    if(otros.length) L.push('');
+    otros.forEach(function(a){
+      L.push(lqEtiqueta(a) + ' — total vendido ' + money(a.ventas));
+      a.det.forEach(function(d){ L.push('  · ' + d.nom + ' x' + fmtCant(d.q, d.u) + ' — ' + money(d.total)); });
+      L.push('');
+    });
+    if(l.nota) L.push('Nota: ' + l.nota);
+    return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  /* ------------------------------- pantalla ------------------------------- */
+  function lqPostCierre(t){
+    try{
+      if(S.rol === 'admin' && lqActivo()) setTimeout(function(){ lqAbrir(t.id); }, 350);
+    }catch(e){}
+  }
+  function lqAbrir(turnoId){
+    if(S.rol !== 'admin'){ toast('La liquidación la ve un administrador', 'bad'); return; }
+    if(!lqActivo()){ toast('Activá el cierre por rubros en Administración', 'bad'); return; }
+    var t = S.db.turnos.filter(function(x){ return x.id === turnoId; })[0];
+    if(!t || !t.cerrado){ toast('La caja tiene que estar cerrada', 'bad'); return; }
+    var guardada = lqLista().filter(function(x){ return x.id === t.id; })[0];
+    var l = guardada ? JSON.parse(JSON.stringify(guardada)) : lqNueva(t);
+    var rs = t.resumen || resumenTurno(t);
+    var soc = function(){ return l.areas.filter(function(a){ return a.reparte; }); };
+
+    function avisos(){
+      var A = [];
+      var sinC = sum(l.areas, function(a){ return a.sinCosto; });
+      if(sinC) A.push(sinC + (sinC === 1 ? ' renglón vendido no tiene' : ' renglones vendidos no tienen') + ' costo cargado: en esos la ganancia figura igual a lo vendido.');
+      var sin = l.areas.filter(function(a){ return a.id === '_sin'; })[0];
+      if(sin) A.push('Hay ventas por ' + money(sin.ventas) + ' de productos sin rubro asignado. Asignale un rubro a cada categoría en Administración.');
+      var dif = Math.abs(sum(l.areas, function(a){ return a.ventas; }) - rs.totalVentas);
+      if(dif > 1) A.push('La suma de los rubros difiere ' + money(dif) + ' del mostrador total (productos borrados o ventas sin ítems).');
+      if(rs.medios && rs.medios.cuenta) A.push(money(rs.medios.cuenta) + ' del total quedó a cuenta corriente (todavía no se cobró).');
+      if(!l.sueldos.length && Object.keys(lqCfg().emp).some(function(x){ return lqCfg().emp[x].on; })) A.push('Ningún empleado tiene horas fichadas en este turno.');
+      return A;
+    }
+    function bodyHtml(){
+      var h = '';
+      h += '<div class="f"><label for="lq-cerro">Cerró</label><input class="inp" id="lq-cerro" type="text" maxlength="30" value="' + esc(l.cerro || '') + '"></div>';
+      var av = avisos();
+      if(av.length) h += '<div class="note warn" style="margin-top:10px"><span class="ic">⚠</span><div>' + av.map(esc).join('<br>') + '</div></div>';
+      h += '<div class="c-ttl" style="margin-top:14px">Mostrador total</div><div class="rowlist">' +
+           '<div class="r"><span class="nm"><b>Total vendido</b></span><span class="vl"><b>' + money(rs.totalVentas) + '</b></span></div>' +
+           Object.keys(rs.medios || {}).filter(function(x){ return rs.medios[x]; }).map(function(x){
+             return '<div class="r"><span class="nm">' + esc(PAGO_NOM[x] || x) + '</span><span class="vl">' + money(rs.medios[x]) + '</span></div>';
+           }).join('') + '</div>';
+      h += '<div class="c-ttl" style="margin-top:14px">Por rubro</div>';
+      l.areas.forEach(function(a){
+        h += '<details class="lq-area"' + (a.reparte ? '' : ' open') + ' style="margin:6px 0"><summary style="cursor:pointer;min-height:44px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+             '<b>' + esc(lqEtiqueta(a)) + '</b><span class="tiny muted">vendió</span> ' + money(a.ventas) + ' <span class="tiny muted">ganancia</span> <b>' + money(a.ganancia) + '</b>' +
+             (a.reparte ? ' <span class="pill">reparte</span>' : '') + '</summary>' +
+             '<div class="rowlist">' + (a.det.length ? a.det.map(function(d){
+               return '<div class="r"><span class="nm">' + esc(d.nom) + ' <span class="tiny muted">x' + esc(fmtCant(d.q, d.u)) + '</span></span><span class="vl">' + money(d.total) + '</span></div>';
+             }).join('') : '<div class="r"><span class="nm tiny muted">Sin ventas en este turno.</span></div>') + '</div></details>';
+      });
+      if(soc().length){
+        h += '<div class="c-ttl" style="margin-top:14px">Reparto de la ganancia</div>';
+        if(l.sueldos.length){
+          h += l.sueldos.map(function(s, i){
+            return '<div class="f"><label for="lq-s' + i + '">Sueldo de ' + esc(s.nom) + ' <span class="tiny muted">(' + esc(lqHoras(s.horas)) + ' × ' + money(s.rate) + ')</span></label>' +
+                   '<input class="inp" id="lq-s' + i + '" type="number" inputmode="decimal" min="0" step="100" value="' + s.monto + '"></div>';
+          }).join('');
+        }
+        h += '<div class="f"><label for="lq-g">Gastos del día <span class="tiny muted">(merienda, etc.)</span></label>' +
+             '<input class="inp" id="lq-g" type="number" inputmode="decimal" min="0" step="100" value="' + (l.gastos.monto || 0) + '"></div>' +
+             '<div class="f"><label for="lq-gd">Detalle de los gastos</label><input class="inp" id="lq-gd" type="text" maxlength="60" value="' + esc(l.gastos.det || '') + '"></div>';
+        h += soc().map(function(a){
+          return '<div class="f"><label for="lq-i-' + a.id + '">Impuestos de ' + esc(a.dueno || a.nom) + ' <span class="tiny muted">(se aparta del día)</span></label>' +
+                 '<input class="inp" id="lq-i-' + a.id + '" type="number" inputmode="decimal" min="0" step="100" value="' + ((l.impuestos || {})[a.id] || 0) + '"></div>';
+        }).join('');
+      }
+      h += '<div class="f"><label for="lq-nota">Nota</label><input class="inp" id="lq-nota" type="text" maxlength="120" value="' + esc(l.nota || '') + '"></div>';
+      h += '<div class="c-ttl" style="margin-top:14px">Resumen</div><pre id="lq-txt" class="lq-txt" style="white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--sunk,rgba(0,0,0,.05));padding:12px;border-radius:12px;margin:0"></pre>';
+      return h;
+    }
+    function leer(box){
+      l.cerro = clean($('#lq-cerro', box).value, 30);
+      l.sueldos.forEach(function(s, i){ var el = $('#lq-s' + i, box); if(el) s.monto = Math.max(0, r2(numCampo(el))); });
+      var g = $('#lq-g', box); if(g) l.gastos.monto = Math.max(0, r2(numCampo(g)));
+      var gd = $('#lq-gd', box); if(gd) l.gastos.det = clean(gd.value, 60);
+      soc().forEach(function(a){ var el = $('#lq-i-' + a.id, box); if(el) l.impuestos[a.id] = Math.max(0, r2(numCampo(el))); });
+      l.nota = clean($('#lq-nota', box).value, 120);
+    }
+    function pintar(box){
+      leer(box);
+      $('#lq-txt', box).textContent = lqTexto(l, rs, lqCalcular(l));
+    }
+    modal({
+      title:'Liquidación del día', sub:nombreCajaDe(t) + ' · ' + fechaHoraExacta(t.cerrado).slice(0, 16), wide:true,
+      body:bodyHtml(),
+      onOpen:function(box){
+        $$('input', box).forEach(function(i){ i.addEventListener('input', function(){ pintar(box); }); });
+        pintar(box);
+      },
+      buttons:[
+        { t:'Cerrar', cls:'ghost' },
+        { t:'Recalcular rubros', cls:'', fn:function(box){
+            leer(box);
+            ask('Recalcular rubros', 'Se vuelven a calcular lo vendido y la ganancia de cada rubro con la configuración y los costos de hoy. Lo que escribiste en sueldos, gastos e impuestos se conserva.', function(){
+              var nueva = lqAreasTurno(t); l.areas = nueva;
+              var cur = lqLista().filter(function(x){ return x.id === t.id; })[0];
+              if(cur){ cur.areas = nueva; }
+              lqGuardarComo(l, t, true);
+            });
+            return false;
+          } },
+        { t:'Copiar', cls:'', fn:function(box){
+            pintar(box);
+            var tx = $('#lq-txt', box).textContent;
+            if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(tx).then(function(){ toast('Resumen copiado', 'ok'); }, function(){ toast('No se pudo copiar: seleccionalo a mano', 'bad'); });
+            else toast('Este navegador no deja copiar: seleccionalo a mano', 'bad');
+            return false;
+          } },
+        { t:'WhatsApp', cls:'', fn:function(box){
+            pintar(box);
+            var url = 'https://wa.me/?text=' + encodeURIComponent($('#lq-txt', box).textContent);
+            window.open(url, '_blank', 'noopener');
+            return false;
+          } },
+        { t:'Guardar', cls:'gold', fn:function(box){
+            leer(box);
+            lqGuardarComo(l, t, false);
+            return false;
+          } }
+      ]
+    });
+  }
+  function lqGuardarComo(l, t, silencioso){
+    var lista = lqLista(), i = -1, antes = null;
+    lista.forEach(function(x, k){ if(x.id === l.id) i = k; });
+    var calc = lqCalcular(l);
+    var txt = calc.filas.map(function(f){ return (f.dueno || f.nom) + ' ' + lqM(f.gan); }).join(' · ');
+    if(i >= 0){ antes = lista[i]; l.ts = antes.ts; l.u = antes.u; l.editada = Date.now(); l.editor = S.user; lista[i] = l; }
+    else { l.ts = Date.now(); l.u = S.user; lista.push(l); }
+    audit(antes ? 'liquidacion.editada' : 'liquidacion.guardada', fechaCorta(l.fecha) + ' · ' + txt);
+    refresh();
+    toast(silencioso ? 'Rubros recalculados y guardados' : 'Liquidación guardada · ' + txt, 'ok');
+  }
+
+  /* --------------------------- listado y CSV --------------------------- */
+  function lqListado(){
+    if(S.rol !== 'admin'){ toast('Lo ve un administrador', 'bad'); return; }
+    var lista = lqLista().slice().sort(function(a, b){ return b.fecha - a.fecha; });
+    var meses = {};
+    lista.forEach(function(l){ var d = new Date(l.fecha); meses[d.getFullYear() + '-' + pad(d.getMonth() + 1)] = 1; });
+    var ms = Object.keys(meses).sort().reverse(), act = ms[0] || '';
+    function filas(m){
+      var sel = lista.filter(function(l){ var d = new Date(l.fecha); return !m || (d.getFullYear() + '-' + pad(d.getMonth() + 1)) === m; });
+      var tot = {}, nom = {};
+      var tr = sel.map(function(l){
+        var c = lqCalcular(l);
+        c.filas.forEach(function(f){ tot[f.id] = r2((tot[f.id] || 0) + f.gan); nom[f.id] = f.dueno || f.nom; });
+        return '<div class="r" data-lqid="' + esc(l.id) + '" style="cursor:pointer;min-height:48px"><span class="nm">' + esc(lqFechaTxt(l.fecha)) + '<br><span class="tiny muted">cerró ' + esc(l.cerro || '—') + '</span></span>' +
+               '<span class="vl tiny">' + c.filas.map(function(f){ return esc(f.dueno || f.nom) + ' ' + lqM(f.gan); }).join('<br>') + '</span></div>';
+      }).join('') || '<div class="empty">Todavía no hay liquidaciones guardadas.</div>';
+      var resumen = Object.keys(tot).map(function(id){ return '<div class="r"><span class="nm"><b>' + esc(nom[id]) + '</b> en el período</span><span class="vl"><b>' + lqM(tot[id]) + '</b></span></div>'; }).join('');
+      return { html:tr, resumen:resumen, n:sel.length };
+    }
+    var f0 = filas(act);
+    modal({
+      title:'Liquidaciones', sub:'Tocá una para verla o editarla', wide:true,
+      body:'<div class="f"><label for="lq-mes">Mes</label><select class="inp" id="lq-mes"><option value="">Todos</option>' + ms.map(function(m){ return '<option value="' + m + '"' + (m === act ? ' selected' : '') + '>' + m + '</option>'; }).join('') + '</select></div>' +
+           '<div class="rowlist" id="lq-res" style="margin-top:10px">' + f0.resumen + '</div>' +
+           '<div class="rowlist" id="lq-lista" style="margin-top:10px;max-height:44vh;overflow:auto">' + f0.html + '</div>',
+      onOpen:function(box){
+        function bind(){
+          $$('[data-lqid]', box).forEach(function(r){ r.addEventListener('click', function(){ var id = r.getAttribute('data-lqid'); closeModal(); setTimeout(function(){ lqAbrir(id); }, 80); }); });
+        }
+        bind();
+        $('#lq-mes', box).addEventListener('change', function(e){
+          var f = filas(e.target.value); $('#lq-res', box).innerHTML = f.resumen; $('#lq-lista', box).innerHTML = f.html; bind();
+        });
+      },
+      buttons:[{ t:'Cerrar', cls:'ghost' }, { t:'Descargar CSV', cls:'gold', fn:function(box){
+        var m = $('#lq-mes', box).value, k = lqCfg();
+        var head = ['fecha','cerro','caja','mostrador_total'];
+        k.areas.forEach(function(a){ head.push('vendido_' + a.nom, 'ganancia_' + a.nom); });
+        head.push('sueldos','gastos','impuestos'); k.areas.filter(function(a){ return a.reparte; }).forEach(function(a){ head.push('ganancia_final_' + (a.dueno || a.nom)); });
+        var rows = [head];
+        lista.slice().reverse().forEach(function(l){
+          var d = new Date(l.fecha);
+          if(m && (d.getFullYear() + '-' + pad(d.getMonth() + 1)) !== m) return;
+          var t = S.db.turnos.filter(function(x){ return x.id === l.id; })[0], rs = t ? (t.resumen || resumenTurno(t)) : { totalVentas:0 };
+          var c = lqCalcular(l), row = [ymd(d), l.cerro || '', l.caja || '', rs.totalVentas];
+          k.areas.forEach(function(a){ var x = l.areas.filter(function(y){ return y.id === a.id; })[0]; row.push(x ? x.ventas : 0, x ? x.ganancia : 0); });
+          row.push(c.sueldo, c.gastos, c.impuestos);
+          k.areas.filter(function(a){ return a.reparte; }).forEach(function(a){ var f = c.filas.filter(function(y){ return y.id === a.id; })[0]; row.push(f ? f.gan : 0); });
+          rows.push(row);
+        });
+        ixBajar('rave-liquidaciones', rows);
+        audit('liquidaciones.exportadas', (rows.length - 1) + ' filas');
+        return false;
+      } }]
+    });
+  }
+
+  /* ----------------------------- configuración ----------------------------- */
+  function lqCardHtml(){
+    var k = lqCfg();
+    return '<div class="card b6"><div class="c-head"><span class="c-ttl">Cierre por rubros y reparto</span></div>' +
+      '<div class="tiny muted">Para comercios con varios rubros de distintos dueños: al cerrar la caja muestra el mostrador total, lo vendido y la ganancia de cada rubro, y reparte la ganancia entre los responsables.</div>' +
+      '<div style="margin-top:10px"><span class="pill ' + (lqActivo() ? 'ok' : '') + '">' + (lqActivo() ? 'Activado · ' + k.areas.length + ' rubros' : 'Apagado') + '</span></div>' +
+      '<div class="inline" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn gold" type="button" id="k-lq-cfg">Configurar</button>' +
+      '<button class="btn" type="button" id="k-lq-lista">Ver liquidaciones</button></div></div>';
+  }
+  function lqBind(){
+    var b;
+    if((b = $('#k-lq-cfg'))) b.addEventListener('click', lqConfig);
+    if((b = $('#k-lq-lista'))) b.addEventListener('click', lqListado);
+  }
+  var LQ_PRESET = [
+    { nom:'Almacén', dueno:'Juan', reparte:true, impuesto:30000, pct:50, match:/almac/i },
+    { nom:'Bebidas', dueno:'Nico', reparte:true, impuesto:30000, pct:50, match:/bebid|vino|promo|cerveza|gaseosa/i },
+    { nom:'Panadería', dueno:'Mamá', reparte:false, impuesto:0, pct:0, match:/pan(a|ad)|factura|medialuna/i },
+    { nom:'Sandwichería', dueno:'Papá', reparte:false, impuesto:0, pct:0, match:/sandwich|lomito|hamburg/i }
+  ];
+  function lqConfig(){
+    if(S.rol !== 'admin'){ toast('Lo configura un administrador', 'bad'); return; }
+    var k = lqCfg(), cs = cats(), emps = S.db.empleados.filter(function(e){ return e.activo !== false; });
+    var slots = [];
+    for(var i = 0; i < LQ_SLOTS; i++){
+      slots.push(k.areas.filter(function(a){ return a.id === 'a' + (i + 1); })[0] || { id:'a' + (i + 1), nom:'', dueno:'', reparte:false, impuesto:0, pct:0 });
+    }
+    function optsArea(sel){
+      return '<option value="">— sin asignar —</option>' + slots.map(function(a, i){
+        return '<option value="a' + (i + 1) + '"' + (sel === 'a' + (i + 1) ? ' selected' : '') + '>' + esc(a.nom || ('Rubro ' + (i + 1))) + '</option>';
+      }).join('');
+    }
+    var html = '<label class="chk"><input type="checkbox" id="lq-on"' + (k.activo ? ' checked' : '') + '><span><b>Activar el cierre por rubros y el reparto</b></span></label>' +
+      '<div class="inline" style="margin:10px 0"><button class="btn sm" type="button" id="lq-preset">Cargar los 4 rubros de Almacén RAVE</button></div>' +
+      '<div class="c-ttl">Rubros (hasta ' + LQ_SLOTS + ')</div><div class="tiny muted">Dejá en blanco los que no uses. "Entra al reparto" = su ganancia se divide entre los responsables de esos rubros.</div>' +
+      slots.map(function(a, i){
+        return '<div class="lq-slot" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:10px 0;padding:10px;border:1px solid var(--line,rgba(0,0,0,.12));border-radius:12px">' +
+          '<div class="f"><label>Rubro ' + (i + 1) + '</label><input class="inp" data-lq="nom" data-i="' + i + '" maxlength="30" value="' + esc(a.nom) + '" placeholder="Ej.: Bebidas"></div>' +
+          '<div class="f"><label>Responsable</label><input class="inp" data-lq="dueno" data-i="' + i + '" maxlength="20" value="' + esc(a.dueno || '') + '" placeholder="Ej.: Nico"></div>' +
+          '<label class="chk" style="align-self:end;min-height:48px"><input type="checkbox" data-lq="reparte" data-i="' + i + '"' + (a.reparte ? ' checked' : '') + '><span>Entra al reparto</span></label>' +
+          '<div class="f"><label>% del reparto</label><input class="inp" type="number" inputmode="decimal" min="0" max="100" step="1" data-lq="pct" data-i="' + i + '" value="' + (a.pct != null ? a.pct : 0) + '"></div>' +
+          '<div class="f"><label>Impuestos por día $</label><input class="inp" type="number" inputmode="decimal" min="0" step="100" data-lq="impuesto" data-i="' + i + '" value="' + (a.impuesto || 0) + '"></div></div>';
+      }).join('') +
+      '<div class="c-ttl" style="margin-top:14px">¿A qué rubro pertenece cada categoría del catálogo?</div>' +
+      cs.map(function(c){
+        return '<div class="f"><label>' + esc(c.nom) + '</label><select class="inp" data-lqcat="' + esc(c.cat) + '">' + optsArea(k.catArea[c.cat] || '') + '</select></div>';
+      }).join('') +
+      '<div class="f" style="margin-top:10px"><label>Productos sin categoría asignada van a</label><select class="inp" id="lq-def">' + optsArea(k.defArea || '') + '</select></div>' +
+      '<div class="c-ttl" style="margin-top:14px">Personal que se paga entre los socios</div>' +
+      (emps.length ? '<div class="tiny muted">El sueldo del día = horas fichadas entre la apertura y el cierre de la caja × valor por hora. Se puede corregir en cada liquidación.</div>' + emps.map(function(e){
+        var c = k.emp[e.id] || {};
+        return '<div class="inline" style="gap:10px;align-items:end;margin:8px 0;flex-wrap:wrap"><label class="chk" style="min-width:160px"><input type="checkbox" data-lqemp="' + esc(e.id) + '"' + (c.on ? ' checked' : '') + '><span>' + esc(e.nom) + '</span></label>' +
+          '<div class="f" style="margin:0"><label>Valor por hora $</label><input class="inp" type="number" inputmode="decimal" min="0" step="50" data-lqrate="' + esc(e.id) + '" value="' + (c.rate || 0) + '"></div></div>';
+      }).join('') : '<div class="tiny muted">Todavía no hay empleados cargados en Personal.</div>');
+    modal({
+      title:'Cierre por rubros y reparto', sub:'No cambia el cierre de caja: se calcula aparte', wide:true, body:html,
+      onOpen:function(box){
+        function refrescar(){
+          var nombres = $$('[data-lq="nom"]', box).map(function(i){ return clean(i.value, 30); });
+          $$('select[data-lqcat], #lq-def', box).forEach(function(s){
+            Array.prototype.forEach.call(s.options, function(o, idx){ if(idx > 0) o.textContent = nombres[idx - 1] || ('Rubro ' + idx); });
+          });
+        }
+        $$('[data-lq="nom"]', box).forEach(function(i){ i.addEventListener('input', refrescar); });
+        $('#lq-preset', box).addEventListener('click', function(){
+          LQ_PRESET.forEach(function(p, i){
+            var set = function(f, v){ var el = $('[data-lq="' + f + '"][data-i="' + i + '"]', box); if(el.type === 'checkbox') el.checked = !!v; else el.value = v; };
+            set('nom', p.nom); set('dueno', p.dueno); set('reparte', p.reparte); set('pct', p.pct); set('impuesto', p.impuesto);
+          });
+          refrescar();
+          var sin = [];
+          $$('select[data-lqcat]', box).forEach(function(s){
+            var c = cs.filter(function(x){ return x.cat === s.getAttribute('data-lqcat'); })[0];
+            var idx = LQ_PRESET.findIndex(function(p){ return p.match.test(c.nom); });
+            if(idx >= 0) s.value = 'a' + (idx + 1); else sin.push(c.nom);
+          });
+          toast(sin.length ? 'Cargado. Revisá a qué rubro va: ' + sin.join(', ') : 'Cargado. Revisá y guardá.', sin.length ? 'bad' : 'ok');
+        });
+      },
+      buttons:[{ t:'Cancelar', cls:'ghost' }, { t:'Guardar', cls:'gold', fn:function(box){
+        var nuevas = [], nombres = {}, err = '';
+        for(var i = 0; i < LQ_SLOTS; i++){
+          var g = function(f){ return $('[data-lq="' + f + '"][data-i="' + i + '"]', box); };
+          var nom = clean(g('nom').value, 30);
+          if(!nom) continue;
+          if(nombres[nom.toLowerCase()]) err = 'Hay dos rubros con el mismo nombre: ' + nom;
+          nombres[nom.toLowerCase()] = 1;
+          nuevas.push({ id:'a' + (i + 1), nom:nom, dueno:clean(g('dueno').value, 20), reparte:g('reparte').checked,
+                        pct:Math.max(0, Math.min(100, numCampo(g('pct')))), impuesto:Math.max(0, r2(numCampo(g('impuesto')))) });
+        }
+        var rep = nuevas.filter(function(a){ return a.reparte; });
+        if(!err && rep.length && Math.abs(sum(rep, function(a){ return a.pct; }) - 100) > 0.01) err = 'Los porcentajes del reparto tienen que sumar 100 (hoy suman ' + (Math.round(sum(rep, function(a){ return a.pct; }) * 100) / 100) + ')';
+        if(!err && $('#lq-on', box).checked && !nuevas.length) err = 'Cargá al menos un rubro para activarlo';
+        if(err){ toast(err, 'bad'); return false; }
+        var ids = nuevas.map(function(a){ return a.id; });
+        k.areas = nuevas; k.activo = $('#lq-on', box).checked;
+        k.catArea = {};
+        $$('select[data-lqcat]', box).forEach(function(s){ if(s.value && ids.indexOf(s.value) !== -1) k.catArea[s.getAttribute('data-lqcat')] = s.value; });
+        k.defArea = ids.indexOf($('#lq-def', box).value) !== -1 ? $('#lq-def', box).value : '';
+        k.emp = {};
+        $$('[data-lqemp]', box).forEach(function(c){
+          var id = c.getAttribute('data-lqemp'), r = $('[data-lqrate="' + id + '"]', box);
+          if(c.checked) k.emp[id] = { on:true, rate:Math.max(0, r2(numCampo(r))) };
+        });
+        audit('cierre_rubros.config', (k.activo ? 'activo' : 'apagado') + ' · ' + nuevas.map(function(a){ return a.nom + (a.dueno ? ' (' + a.dueno + ')' : '') + (a.reparte ? ' ' + a.pct + '%' : ''); }).join(', '));
+        refresh();
+        toast(k.activo ? 'Cierre por rubros activado' : 'Guardado (apagado)', 'ok');
+      } }]
     });
   }
 
