@@ -6522,17 +6522,21 @@ var QR = (function(){
         '<div class="grid-f" style="margin-top:14px">' +
           '<div class="f" style="grid-column:1/-1"><label for="p-nom">Nombre</label>' +
             '<input class="inp" id="p-nom" type="text" maxlength="90" value="' + esc(p ? p.nom : '') + '"></div>' +
-          '<div class="f"><label for="p-cat">Categoría</label>' +
+          '<div class="f"><label for="p-cat">Categoría del menú público</label>' +
             '<select class="inp" id="p-cat">' +
               cs.map(function(c){
                 return '<option value="' + esc(c.cat) + '"' + (p && p.cat === c.cat ? ' selected' : '') + '>' + esc(c.nom) + '</option>';
               }).join('') +
             '</select>' +
             '<button class="btn xs ghost" type="button" id="p-cats-abm" style="margin-top:6px">Administrar categorías</button></div>' +
-          (lqActivo() ? '<div class="f"><label for="p-area">Rubro</label><select class="inp" id="p-area">' +
-              '<option value="">Según su categoría</option>' +
-              lqCfg().areas.map(function(a){ return '<option value="' + esc(a.id) + '"' + (p && p.area === a.id ? ' selected' : '') + '>' + esc(a.nom) + (a.dueno ? ' (' + esc(a.dueno) + ')' : '') + '</option>'; }).join('') +
-            '</select><span class="help">Decide en qué rubro suma su venta en el cierre de caja.</span></div>' : '') +
+          (lqActivo()
+            ? '<div class="f" style="grid-column:1/-1"><label for="p-area">Rubro del almacén</label><select class="inp" id="p-area">' +
+                '<option value="">Elegir rubro…</option>' +
+                lqCfg().areas.map(function(a){ return '<option value="' + esc(a.id) + '"' + (p && p.area === a.id ? ' selected' : '') + '>' + esc(a.nom) + (a.dueno ? ' (' + esc(a.dueno) + ')' : '') + '</option>'; }).join('') +
+              '</select><span class="help">Es el rubro de tu almacén (a quién suma la venta en el cierre). No tiene nada que ver con la categoría del menú público.</span></div>'
+            : '<div class="f" style="grid-column:1/-1"><label>Rubro del almacén</label>' +
+                '<div class="help">Todavía no definiste los rubros (Almacén, Bebidas, Panadería, Sandwichería...).</div>' +
+                (S.rol === 'admin' ? '<button class="btn xs gold" type="button" id="p-rub-def" style="margin-top:6px;align-self:flex-start">Definir rubros ahora</button>' : '') + '</div>') +
           '<div class="f"><label for="p-sub">Subtítulo <span class="help">(medida, variedad)</span></label>' +
             '<input class="inp" id="p-sub" type="text" maxlength="40" value="' + esc(p ? (p.sub||'') : '') + '" placeholder="2.25 lt"></div>' +
           '<div class="f"><label for="p-grupo">Agrupar bajo <span class="help">(bodega o marca)</span></label>' +
@@ -6588,6 +6592,8 @@ var QR = (function(){
       onOpen:function(box){
         var prev = $('#p-img-prev', box);
         $('#p-cats-abm', box).addEventListener('click', function(){ closeModal(); categoriasModal(); });
+        var rd = $('#p-rub-def', box);
+        if(rd) rd.addEventListener('click', function(){ closeModal(); lqConfig(); });
         $('#p-img-file', box).addEventListener('change', function(e){
           var f = e.target.files && e.target.files[0];
           if(!f) return;
