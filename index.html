@@ -3585,7 +3585,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
       <button class="nav" type="button" data-go="config"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 7.4h9.2M18.6 7.4h1.8M3.6 16.6h3.8M13.4 16.6h7"/><circle cx="15.6" cy="7.4" r="2.3"/><circle cx="10" cy="16.6" r="2.3"/></svg></span><span class="tx" data-i18n="nav.config">Administración</span></button>
 
       <div class="side-foot">
-        <b>Sistema RAVE</b> v1.2<br>
+        <b>Sistema RAVE</b> v1.3<br>
         <span id="erp-foot-mode">Archivo único · datos locales</span><br>
         <a class="dev-link" href="https://wa.me/5493875143900?text=Hola%20Rave%20Holding!%20Quiero%20el%20Sistema%20RAVE%20para%20mi%20negocio." target="_blank" rel="noopener">Desarrollado por <b>Rave Holding</b> · Salta</a>
       </div>
@@ -10072,7 +10072,8 @@ var QR = (function(){
           '<span><b>Ocultar del menú los productos sin stock.</b> No se borran: vuelven a aparecer solos cuando entra mercadería.</span></label>' +
         '<div class="tiny muted" style="margin-top:10px">El menú público sólo muestra nombre, descripción, precio, foto y categoría. ' +
           'Nunca costos, stock exacto ni márgenes.</div>' +
-        '<div class="inline" style="margin-top:14px"><button class="btn" type="button" id="k-importar">Importar productos (CSV / Excel)</button></div>' +
+        '<div class="inline" style="margin-top:14px"><button class="btn" type="button" id="k-importar">Importar productos (CSV / Excel)</button> ' +
+          '<button class="btn gold" type="button" id="k-ix">Importar / Exportar todo</button></div>' +
       '</div>' +
 
       '<div class="card b6"><div class="c-head"><span class="c-ttl">Este equipo</span></div>' +
@@ -10128,6 +10129,7 @@ var QR = (function(){
       toast(e.target.checked ? 'Los productos sin stock se ocultan del menú' : 'Los productos sin stock vuelven a verse', 'ok');
     });
     if((b = $('#k-importar'))) b.addEventListener('click', function(){ importarAsistente(); });
+    if((b = $('#k-ix'))) b.addEventListener('click', ixAbrir);
     if((b = $('#k-tactil'))) b.addEventListener('change', function(e){ localSet('rave.tactil', e.target.value); aplicarTactil(); toast('Listo', 'ok'); });
     if((b = $('#k-inact'))) b.addEventListener('change', function(e){ localSet('rave.inact', e.target.value); reiniciarInactividad(); toast('Listo', 'ok'); });
     if((b = $('#k-kiosco'))) b.addEventListener('click', entrarKiosco);
@@ -13924,7 +13926,7 @@ var QR = (function(){
       gErr('g-ayuda-err', (e.red ? 'No hay conexión a internet.' : (/n[uú]mero|muchos|recibimos|contactarte/i.test(e.message) ? e.message : 'No se pudo enviar el pedido.')) + ' Escribinos por WhatsApp o correo con los botones de abajo.');
     });
   }
-  var APP_VERSION = '1.2';
+  var APP_VERSION = '1.3';
 
   function wireRecuperacion(){
     $('#g-recup-open').addEventListener('click', abrirRecuperar);
@@ -13954,6 +13956,658 @@ var QR = (function(){
       if(S.db) S.db._nubeRefresh = null;
       saveMeta();
       return k;
+    });
+  }
+
+  /* =======================================================================
+     58. IMPORTAR / EXPORTAR  ·  artículos, boletas, cajas, rubros, clientes
+     ---------------------------------------------------------------------
+     Módulo agregado: no reemplaza nada de lo anterior (el asistente de
+     productos del paso 52 se sigue usando para importar artículos).
+     - Exporta a CSV (se abre directo en Excel, con ; y acentos correctos).
+     - Importa CSV o Excel (.xlsx): columnas → vista previa con errores →
+       probar sin guardar → confirmar. Duplicados: actualizar u omitir.
+     - Todo lote queda en auditoría y se puede deshacer completo.
+     - Boletas y cajas importadas son HISTÓRICO: no tocan stock ni caja
+       viva, y se marcan como importadas (no se hacen pasar por emitidas
+       en este sistema ni piden CAE).
+     ======================================================================= */
+  var IX_MAX_FILAS = 20000;
+
+  function ixIso(ts){
+    if(!ts) return '';
+    var d = new Date(ts);
+    return ymd(d) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+  /* acepta 2026-10-04, 2026-10-04 18:30(:05), 04/10/2026, 04/10/2026 18:30 */
+  function ixFecha(s, libre){
+    s = String(s == null ? '' : s).trim();
+    if(!s) return null;
+    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    var a, mo, d, h, mi, se;
+    if(m){ a = +m[1]; mo = +m[2]; d = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0); se = +(m[6] || 0); }
+    else {
+      m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+      if(!m) return null;
+      d = +m[1]; mo = +m[2]; a = +m[3]; h = +(m[4] || 0); mi = +(m[5] || 0); se = +(m[6] || 0);
+    }
+    if(mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 59) return null;
+    var dt = new Date(a, mo - 1, d, h, mi, se);
+    if(dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+    var ts = dt.getTime();
+    if((!libre && ts < Date.UTC(2000, 0, 1)) || ts < Date.UTC(1900, 0, 1) || ts > Date.now() + 86400000) return null;
+    return ts;
+  }
+  function ixDia(s){ var ts = ixFecha(s, true); return ts == null ? '' : ymd(new Date(ts)); }
+  /* protege contra fórmulas de planilla (=, +, @, -) en textos que vienen de afuera */
+  function ixCel(v){
+    if(typeof v === 'number') return v;
+    v = String(v == null ? '' : v);
+    return /^[=+@]/.test(v) || /^-[^\d]/.test(v) ? "'" + v : v;
+  }
+  function ixTxt(v, max){
+    v = clean(v, max || 120);
+    return /^'[=+@-]/.test(v) ? v.slice(1) : v;
+  }
+  /* mismo número aunque venga con +54 9, 0 o 15: se compara por los últimos 10 dígitos */
+  function ixWaKey(d){ d = digits(d, 18); return d.length > 10 ? d.slice(-10) : d; }
+  function ixSiNo(v){ return /^(si|sí|s|1|true|x|yes|y)$/i.test(clean(v, 6)); }
+  function ixBajar(nombre, rows){
+    bajarArchivo(nombre + '-' + ymd() + '.csv',
+      '﻿' + toCSV(rows.map(function(r){ return r.map(ixCel); })), 'text/csv;charset=utf-8');
+  }
+  function ixNorm(h){ return sinAcentos(String(h || '').toLowerCase()).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
+
+  /* ---------------------------- EXPORTAR ---------------------------- */
+  function ixExpArticulos(){
+    var rows = [['id','sku','nombre','rubro','precio','costo','stock','minimo','unidad','codigo_barras','alcohol','en_menu','activo']];
+    S.db.prod.forEach(function(p){
+      rows.push([p.id, p.sku || '', p.nom, catNom(p.cat), p.precio, p.costo || 0, p.stock || 0, p.min || 0,
+                 p.unidad || 'u', p.cb || '', p.alc ? 'si' : 'no', p.menu ? 'si' : 'no', p.activo === false ? 'no' : 'si']);
+    });
+    ixBajar('rave-articulos', rows);
+    return rows.length - 1;
+  }
+  function ixExpRubros(){
+    var rows = [['id','nombre','titulo','layout','alcohol','en_menu','productos']];
+    cats().forEach(function(c){
+      var n = S.db.prod.filter(function(p){ return p.cat === c.cat; }).length;
+      rows.push([c.cat, c.nom, c.titulo || c.nom, c.layout || 'grid', c.alc ? 'si' : 'no', c.menu === false ? 'no' : 'si', n]);
+    });
+    ixBajar('rave-rubros', rows);
+    return rows.length - 1;
+  }
+  function ixExpClientes(){
+    var rows = [['nombre','whatsapp','email','cumpleanos','limite_credito','saldo','consentimiento','recibe_whatsapp','sellos','canjes','alta','notas']];
+    S.db.clientes.forEach(function(c){
+      rows.push([c.nom, waDe(c), emailDe(c), c.cumple || '', c.limite || 0, r2(saldoCliente(c.id)),
+                 c.consent ? 'si' : 'no', c.waOk ? 'si' : 'no', c.sellos || 0, c.canjes || 0, ymd(new Date(c.ts)), c.notas || '']);
+    });
+    ixBajar('rave-clientes', rows);
+    return rows.length - 1;
+  }
+  /* una fila por ítem: la cabecera se repite (así la planilla se filtra y se suma fácil) */
+  function ixExpBoletas(desde, hasta){
+    var rows = [['numero','fecha','tipo','estado','pago','descuento','total','cliente','cliente_whatsapp','usuario','caja','cae',
+                 'producto','cantidad','precio_unitario','costo_unitario','unidad','codigo_barras']];
+    var n = 0;
+    S.db.ventas.slice().sort(function(a, b){ return a.ts - b.ts; }).forEach(function(v){
+      var d = ymd(new Date(v.ts));
+      if((desde && d < desde) || (hasta && d > hasta)) return;
+      n++;
+      var tipo = v.doc ? v.doc.tipo : ((v.fiscal && v.fiscal.tipo) || 'X');
+      var nro = (v.doc && v.doc.nro) ? v.doc.nro : v.nro;
+      var cli = v.clienteId ? S.db.clientes.filter(function(c){ return c.id === v.clienteId; })[0] : null;
+      var cab = [nro, ixIso(v.ts), tipo, v.estado || 'ok', v.pago || '', v.desc || 0, v.total || 0,
+                 cli ? cli.nom : '', cli ? waDe(cli) : '', v.u || '', (v.fiscal && v.fiscal.caja) || '', (v.fiscal && v.fiscal.cae) || ''];
+      var its = v.items && v.items.length ? v.items : [null];
+      its.forEach(function(i){
+        var p = i ? prodById(i.id) : null;
+        rows.push(cab.concat(i ? [i.nom, i.q, i.precio, i.costo || 0, i.u || 'u', p ? (p.cb || '') : ''] : ['', '', '', '', '', '']));
+      });
+    });
+    ixBajar('rave-boletas', rows);
+    return n;
+  }
+  function ixExpCajas(desde, hasta){
+    var rows = [['caja','dispositivo','abierto','cerrado','usuario','usuario_cierre','inicial','esperado','contado','diferencia','observaciones','cant_ventas','total_ventas','importada']];
+    var n = 0;
+    S.db.turnos.slice().sort(function(a, b){ return a.abierto - b.abierto; }).forEach(function(t){
+      var d = ymd(new Date(t.abierto));
+      if((desde && d < desde) || (hasta && d > hasta)) return;
+      n++;
+      var rs = t.resumen || resumenTurno(t);
+      rows.push([nombreCajaDe(t), t.disp || '', ixIso(t.abierto), ixIso(t.cerrado), t.u || '', t.uCierre || '',
+                 t.inicial || 0, t.cerrado ? (t.esperado != null ? t.esperado : rs.esperado) : '', t.cerrado ? (t.contado == null ? '' : t.contado) : '',
+                 t.cerrado ? (t.dif == null ? '' : t.dif) : '', t.obs || '', rs.nVentas || 0, rs.totalVentas || 0, t.importada ? 'si' : 'no']);
+    });
+    ixBajar('rave-cajas', rows);
+    return n;
+  }
+
+  /* ------------------- PLANTILLAS (columnas esperadas) ------------------- */
+  var IX_PLANTILLAS = {
+    rubros:   [['nombre','titulo','layout','alcohol','en_menu'], ['Gaseosas','Gaseosas y aguas','grid','no','si']],
+    clientes: [['nombre','whatsapp','email','cumpleanos','limite_credito','consentimiento','recibe_whatsapp','notas'],
+               ['Juan Pérez','3875551234','juan@correo.com','1990-05-21','50000','si','si','Cliente de barrio']],
+    boletas:  [['numero','fecha','tipo','estado','pago','descuento','total','cliente_whatsapp','usuario','cae','producto','cantidad','precio_unitario','costo_unitario','unidad','codigo_barras'],
+               ['0001-00000123','2026-09-30 19:45','B','ok','efectivo','0','7000','','mostrador','','Fernet Branca 750 ml','1','7000','5200','u','7790000000000']],
+    cajas:    [['caja','abierto','cerrado','usuario','inicial','esperado','contado','observaciones'],
+               ['Caja 1','2026-09-30 09:00','2026-09-30 21:00','mostrador','10000','85000','85000','']]
+  };
+
+  /* ------------------------ ENTIDADES A IMPORTAR ------------------------ */
+  /* cada una: campos [clave, título, sinónimos, obligatorio], analizar(get, filas, pol), aplicar(rows, lote) */
+  var IX_COLS = {
+    cats:     { arr:function(){ return cats(); },        idf:'cat' },
+    clientes: { arr:function(){ return S.db.clientes; }, idf:'id' },
+    ventas:   { arr:function(){ return S.db.ventas; },   idf:'id' },
+    turnos:   { arr:function(){ return S.db.turnos; },   idf:'id' }
+  };
+  function ixCrear(lote, col, obj){
+    IX_COLS[col].arr().push(obj);
+    (lote.creados[col] = lote.creados[col] || []).push(obj[IX_COLS[col].idf]);
+  }
+  function ixGuardarAntes(lote, col, obj){
+    var m = (lote.prev[col] = lote.prev[col] || {});
+    var id = obj[IX_COLS[col].idf];
+    if(!m[id]) m[id] = JSON.parse(JSON.stringify(obj));
+  }
+  /* revierte un lote (también se usa si algo falla a mitad de la aplicación) */
+  function ixRevertir(lote){
+    Object.keys(lote.creados).forEach(function(col){
+      var C = IX_COLS[col], a = C.arr(), ids = lote.creados[col];
+      for(var i = a.length - 1; i >= 0; i--) if(ids.indexOf(a[i][C.idf]) !== -1) a.splice(i, 1);
+    });
+    Object.keys(lote.prev).forEach(function(col){
+      var C = IX_COLS[col], a = C.arr();
+      Object.keys(lote.prev[col]).forEach(function(id){
+        for(var i = 0; i < a.length; i++) if(a[i][C.idf] === id){ a[i] = lote.prev[col][id]; break; }
+      });
+    });
+  }
+  function ixLotes(){ return S.db.cfg.lotesImp || (S.db.cfg.lotesImp = []); }
+
+  var IX_ENT = {};
+
+  /* ---- RUBROS ---- */
+  IX_ENT.rubros = {
+    titulo:'rubros', plural:'Rubros (categorías)',
+    campos:[
+      ['nom','Nombre del rubro', ['nombre','rubro','categoria'], true],
+      ['id','Código interno (opcional)', ['id','codigo','cat'], false],
+      ['titulo','Título en el menú', ['titulo'], false],
+      ['layout','Diseño (grid / rows / bodegas)', ['layout','diseno'], false],
+      ['alc','¿Alcohol?', ['alcohol','alc'], false],
+      ['menu','¿Se muestra en el menú?', ['en_menu','menu'], false]
+    ],
+    analizar:function(get, filas, pol){
+      var out = [], nombres = {}, ids = {};
+      filas.forEach(function(f, i){
+        var r = { n:i + 2, errores:[] };
+        r.nom = ixTxt(get(f, 'nom'), 30);
+        if(r.nom.length < 2) r.errores.push('falta el nombre');
+        var key = r.nom.toLowerCase();
+        if(key && nombres[key]) r.errores.push('nombre repetido en el archivo (fila ' + nombres[key] + ')');
+        else if(key) nombres[key] = r.n;
+        var lay = clean(get(f, 'layout'), 10).toLowerCase();
+        r.layout = ['grid', 'rows', 'bodegas'].indexOf(lay) !== -1 ? lay : (lay ? 'grid' : '');
+        r.titulo = ixTxt(get(f, 'titulo'), 60);
+        r.alc = get(f, 'alc') === '' ? null : ixSiNo(get(f, 'alc'));
+        r.menu = get(f, 'menu') === '' ? null : ixSiNo(get(f, 'menu'));
+        var idIn = slug(get(f, 'id'));
+        r.ex = cats().filter(function(c){ return (idIn && c.cat === idIn) || c.nom.toLowerCase() === key; })[0] || null;
+        r.accion = r.errores.length ? 'error' : (r.ex ? (pol === 'omitir' ? 'omitir' : 'actualizar') : 'crear');
+        r.id = r.ex ? r.ex.cat : (idIn || slug(r.nom));
+        if(r.accion === 'crear'){
+          var base = r.id || ('cat' + Date.now().toString(36)), q = base, k = 2;
+          while(catById(q) || ids[q]) q = base + '-' + (k++);
+          r.id = q; ids[q] = 1;
+        }
+        r.txt = r.nom + (r.ex && r.ex.nom !== r.nom ? ' (hoy: ' + r.ex.nom + ')' : '');
+        out.push(r);
+      });
+      return out;
+    },
+    aplicar:function(rows, lote){
+      rows.forEach(function(r){
+        if(r.accion === 'crear'){
+          ixCrear(lote, 'cats', { cat:r.id, nom:r.nom, titulo:r.titulo || r.nom, hint:'', layout:r.layout || 'grid', alc:!!r.alc, menu:r.menu !== false });
+        } else if(r.accion === 'actualizar'){
+          ixGuardarAntes(lote, 'cats', r.ex);
+          r.ex.nom = r.nom;
+          if(r.titulo) r.ex.titulo = r.titulo;
+          if(r.layout) r.ex.layout = r.layout;
+          if(r.alc != null) r.ex.alc = r.alc;
+          if(r.menu != null) r.ex.menu = r.menu;
+        }
+      });
+      return Promise.resolve();
+    }
+  };
+
+  /* ---- CLIENTES ---- */
+  IX_ENT.clientes = {
+    titulo:'clientes', plural:'Clientes',
+    campos:[
+      ['nom','Nombre y apellido', ['nombre','cliente','apellido_y_nombre'], true],
+      ['wa','WhatsApp', ['whatsapp','celular','telefono','tel','wsp'], true],
+      ['cons','Consentimiento (si / no)', ['consentimiento','consiente','acepta'], true],
+      ['email','Email', ['email','correo','mail'], false],
+      ['cumple','Cumpleaños (AAAA-MM-DD o DD/MM/AAAA)', ['cumpleanos','cumple','nacimiento'], false],
+      ['limite','Límite de crédito', ['limite_credito','limite','credito'], false],
+      ['waok','¿Acepta mensajes por WhatsApp?', ['recibe_whatsapp','acepta_whatsapp','waok'], false],
+      ['notas','Notas', ['notas','observaciones'], false]
+    ],
+    analizar:function(get, filas, pol){
+      var out = [], vistos = {};
+      filas.forEach(function(f, i){
+        var r = { n:i + 2, errores:[] };
+        r.nom = ixTxt(get(f, 'nom'), 80);
+        r.wa = digits(get(f, 'wa'), 18);
+        if(r.nom.length < 3) r.errores.push('poné nombre y apellido');
+        if(r.wa.length < 8) r.errores.push('WhatsApp inválido');
+        var wk = ixWaKey(r.wa);
+        if(wk && vistos[wk]) r.errores.push('WhatsApp repetido en el archivo (fila ' + vistos[wk] + ')');
+        else if(wk) vistos[wk] = r.n;
+        if(!ixSiNo(get(f, 'cons'))) r.errores.push('sin consentimiento expreso: no se puede cargar (Ley 25.326)');
+        r.email = ixTxt(get(f, 'email'), 70);
+        if(r.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.email)) r.errores.push('email inválido');
+        var cu = get(f, 'cumple');
+        r.cumple = '';
+        if(cu){ r.cumple = ixDia(cu); if(!r.cumple) r.errores.push('cumpleaños inválido'); }
+        var lm = get(f, 'limite');
+        r.limite = lm === '' ? null : Math.max(0, r2(toNum(lm)));
+        r.waOk = get(f, 'waok') === '' ? true : ixSiNo(get(f, 'waok'));
+        r.notas = ixTxt(get(f, 'notas'), 120);
+        r.ex = r.wa ? S.db.clientes.filter(function(c){ return ixWaKey(waDe(c)) === ixWaKey(r.wa); })[0] || null : null;
+        r.accion = r.errores.length ? 'error' : (r.ex ? (pol === 'omitir' ? 'omitir' : 'actualizar') : 'crear');
+        r.txt = r.nom + ' · ' + r.wa;
+        out.push(r);
+      });
+      return out;
+    },
+    aplicar:function(rows, lote){
+      var act = rows.filter(function(r){ return r.accion === 'crear' || r.accion === 'actualizar'; });
+      /* primero se cifra todo; recién después se modifica la base, de una sola vez */
+      return Promise.all(act.map(function(r){ return Promise.all([encField(r.wa), encField(r.email)]); })).then(function(enc){
+        act.forEach(function(r, i){
+          var c = r.ex;
+          if(c){ ixGuardarAntes(lote, 'clientes', c); }
+          else {
+            c = { id:uid(), ts:Date.now(), sellos:0, ultimoSello:0, canjes:0, consent:true, limite:0 };
+          }
+          c.nom = r.nom; c.cumple = r.cumple || c.cumple || ''; c.consent = true;
+          if(r.notas) c.notas = r.notas; else if(c.notas == null) c.notas = '';
+          if(r.limite != null) c.limite = r.limite;
+          if(c.waOk !== r.waOk){ c.waOk = r.waOk; c.waOkTs = Date.now(); }
+          c.wa = enc[i][0]; c.email = enc[i][1];
+          CLARO['wa' + c.id] = r.wa; CLARO['em' + c.id] = r.email;
+          if(!r.ex) ixCrear(lote, 'clientes', c);
+        });
+      });
+    }
+  };
+
+  /* ---- BOLETAS (histórico) ---- */
+  IX_ENT.boletas = {
+    titulo:'boletas', plural:'Boletas / ventas (histórico)',
+    campos:[
+      ['nro','Número', ['numero','nro','comprobante','boleta'], true],
+      ['fecha','Fecha (AAAA-MM-DD HH:MM)', ['fecha','fecha_hora'], true],
+      ['tipo','Tipo (A B C X R P)', ['tipo','clase'], true],
+      ['prod','Producto', ['producto','articulo','detalle','nombre'], true],
+      ['q','Cantidad', ['cantidad','cant'], true],
+      ['precio','Precio unitario', ['precio_unitario','precio','pu'], true],
+      ['costo','Costo unitario', ['costo_unitario','costo'], false],
+      ['unidad','Unidad', ['unidad','um'], false],
+      ['cb','Código de barras / SKU', ['codigo_barras','codigo','sku','ean'], false],
+      ['pago','Medio de pago', ['pago','medio_pago','forma_pago'], false],
+      ['desc','Descuento total', ['descuento','desc'], false],
+      ['total','Total (control)', ['total','importe'], false],
+      ['wa','WhatsApp del cliente', ['cliente_whatsapp','whatsapp'], false],
+      ['usuario','Usuario', ['usuario','vendedor','cajero'], false],
+      ['cae','CAE', ['cae'], false],
+      ['estado','Estado', ['estado'], false]
+    ],
+    analizar:function(get, filas, pol){
+      var grupos = [], idx = {};
+      filas.forEach(function(f, i){
+        var tipo = clean(get(f, 'tipo'), 4).toUpperCase(), nro = ixTxt(get(f, 'nro'), 30);
+        var key = tipo + '|' + nro;
+        if(!nro){ grupos.push({ key:'', filas:[{ f:f, n:i + 2 }] }); return; }
+        if(idx[key] == null){ idx[key] = grupos.length; grupos.push({ key:key, filas:[] }); }
+        grupos[idx[key]].filas.push({ f:f, n:i + 2 });
+      });
+      var out = [];
+      grupos.forEach(function(g){
+        var f0 = g.filas[0].f, r = { n:g.filas[0].n, errores:[], nrofilas:g.filas.length };
+        r.tipo = clean(get(f0, 'tipo'), 4).toUpperCase();
+        r.nro = ixTxt(get(f0, 'nro'), 30);
+        if(!r.nro) r.errores.push('falta el número de boleta');
+        if(!DOC_NOM[r.tipo]) r.errores.push('tipo inválido "' + r.tipo + '" (usá ' + Object.keys(DOC_NOM).join(', ') + ')');
+        r.ts = ixFecha(get(f0, 'fecha'));
+        if(r.ts == null) r.errores.push('fecha inválida o futura');
+        var pg = ixNorm(get(f0, 'pago'));
+        r.pago = !pg ? 'efectivo' : (PAGO_NOM[pg] ? pg : (/^tarjeta_?deb|^debito/.test(pg) ? 'debito' : (/^tarjeta_?cred|^credito/.test(pg) ? 'credito' : (/^cuenta|^fiado/.test(pg) ? 'cuenta' : ''))));
+        if(!r.pago) r.errores.push('medio de pago desconocido "' + clean(get(f0, 'pago'), 20) + '"');
+        var est = ixNorm(get(f0, 'estado'));
+        r.estado = /^nc$|^NC/.test(r.tipo) ? 'nc' : (r.tipo === 'P' ? 'presupuesto' : (est === 'anulada' ? 'anulada' : 'ok'));
+        r.ds = Math.max(0, r2(toNum(get(f0, 'desc'))));
+        r.items = [];
+        var bruto = 0;
+        g.filas.forEach(function(x){
+          var nom = ixTxt(get(x.f, 'prod'), 90), q = toCant(get(x.f, 'q')), pr = r2(toNum(get(x.f, 'precio')));
+          if(!nom){ r.errores.push('fila ' + x.n + ': falta el producto'); return; }
+          if(!(q > 0)){ r.errores.push('fila ' + x.n + ': cantidad inválida'); return; }
+          if(get(x.f, 'precio') === '' || pr < 0){ r.errores.push('fila ' + x.n + ': precio inválido'); return; }
+          var cb = digits(get(x.f, 'cb'), 30), sku = clean(get(x.f, 'cb'), 30);
+          var p = S.db.prod.filter(function(pp){
+            return (cb && pp.cb === cb) || (sku && pp.sku === sku) || pp.nom.toLowerCase() === nom.toLowerCase();
+          })[0];
+          var u = clean(get(x.f, 'unidad'), 3).toLowerCase();
+          var cst = get(x.f, 'costo') === '' ? (p ? (p.costo || 0) : 0) : Math.max(0, r2(toNum(get(x.f, 'costo'))));
+          r.items.push({ id:p ? p.id : '', nom:nom, q:q, precio:pr, costo:cst, u:/^k/.test(u) ? 'kg' : (/^l/.test(u) ? 'l' : (p && p.unidad) || 'u') });
+          bruto += q * pr;
+        });
+        if(!r.items.length && !r.errores.length) r.errores.push('sin ítems');
+        r.bruto = r2(bruto);
+        if(r.ds > r.bruto) r.errores.push('el descuento supera el subtotal');
+        r.total = r2(r.bruto - r.ds);
+        var tc = get(f0, 'total');
+        if(tc !== '' && Math.abs(r2(toNum(tc)) - r.total) > 1) r.errores.push('el total del archivo (' + money(toNum(tc)) + ') no coincide con la suma de ítems (' + money(r.total) + ')');
+        r.cae = digits(get(f0, 'cae'), 14);
+        r.usuario = ixTxt(get(f0, 'usuario'), 40);
+        var wa = digits(get(f0, 'wa'), 18);
+        r.cli = wa ? S.db.clientes.filter(function(c){ return ixWaKey(waDe(c)) === ixWaKey(wa); })[0] || null : null;
+        if(wa && !r.cli) r.aviso = 'cliente no encontrado: se carga sin cliente';
+        if(r.pago === 'cuenta' && !r.cli && !r.errores.length) r.errores.push('a cuenta corriente sin cliente identificado (cargá antes al cliente)');
+        r.ex = r.nro ? S.db.ventas.filter(function(v){
+          var t = v.doc ? v.doc.tipo : (v.fiscal && v.fiscal.tipo);
+          return t === r.tipo && (v.nro === r.nro || (v.doc && v.doc.nro === r.nro));
+        })[0] || null : null;
+        r.accion = r.errores.length ? 'error' : (r.ex ? 'omitir' : 'crear');   /* una boleta emitida no se pisa */
+        r.txt = DOC_NOM[r.tipo] ? DOC_NOM[r.tipo] + ' ' + r.nro + ' · ' + (r.ts ? fechaCorta(r.ts) : '?') + ' · ' + money(r.total) + (r.ex ? ' · ya existe' : '') : 'Fila ' + r.n;
+        out.push(r);
+      });
+      return out;
+    },
+    aplicar:function(rows, lote){
+      rows.forEach(function(r){
+        if(r.accion !== 'crear') return;
+        var fiscal = !!DOC_FISCAL[r.tipo];
+        ixCrear(lote, 'ventas', {
+          id:uid(), nro:r.nro, ts:r.ts, items:r.items, bruto:r.bruto, desc:r.ds, total:r.total, pago:r.pago,
+          clienteId:r.cli ? r.cli.id : null, u:r.usuario || S.user, turnoId:null, mesaNro:null, mozoId:null, otId:null,
+          fiscal:{ tipo:r.tipo, cond:'', doc:'', ptoVenta:S.db.cfg.ptoVenta, caja:'', nro:fiscal ? r.nro : null, cae:r.cae || null, caeVto:null },
+          doc:{ clase:fiscal ? 'fiscal' : 'interno', tipo:r.tipo, nro:r.nro },
+          arca: fiscal ? (r.cae ? 'facturada' : 'importada') : 'no_fiscal',
+          estado:r.estado, importada:true, lote:lote.id
+        });
+      });
+      return Promise.resolve();
+    },
+    extra:function(rows){
+      var cta = rows.filter(function(r){ return r.accion === 'crear' && r.pago === 'cuenta'; });
+      var tot = cta.reduce(function(a, r){ return a + r.total; }, 0);
+      return cta.length ? 'Ojo: ' + cta.length + ' boletas a cuenta corriente suman ' + money(tot) + ' a la deuda de los clientes.' : '';
+    }
+  };
+
+  /* ---- CAJAS (histórico de turnos cerrados) ---- */
+  IX_ENT.cajas = {
+    titulo:'cajas', plural:'Cajas (turnos cerrados)',
+    campos:[
+      ['caja','Caja', ['caja','nombre_caja'], false],
+      ['abierto','Apertura (AAAA-MM-DD HH:MM)', ['abierto','apertura','fecha_apertura'], true],
+      ['cerrado','Cierre (AAAA-MM-DD HH:MM)', ['cerrado','cierre','fecha_cierre'], true],
+      ['u','Usuario', ['usuario','cajero'], false],
+      ['inicial','Efectivo inicial', ['inicial','efectivo_inicial'], true],
+      ['esperado','Esperado en caja', ['esperado'], false],
+      ['contado','Efectivo contado', ['contado'], true],
+      ['obs','Observaciones', ['observaciones','obs'], false]
+    ],
+    analizar:function(get, filas, pol){
+      var out = [], vistos = {};
+      filas.forEach(function(f, i){
+        var r = { n:i + 2, errores:[] };
+        r.caja = ixTxt(get(f, 'caja'), 30) || 'Caja 1';
+        r.abierto = ixFecha(get(f, 'abierto')); r.cerrado = ixFecha(get(f, 'cerrado'));
+        if(r.abierto == null) r.errores.push('apertura inválida');
+        if(r.cerrado == null) r.errores.push('cierre inválido');
+        if(r.abierto != null && r.cerrado != null && r.cerrado <= r.abierto) r.errores.push('el cierre es anterior a la apertura');
+        r.inicial = Math.max(0, r2(toNum(get(f, 'inicial'))));
+        if(get(f, 'contado') === '') r.errores.push('falta el efectivo contado');
+        r.contado = r2(toNum(get(f, 'contado')));
+        r.esperado = get(f, 'esperado') === '' ? null : r2(toNum(get(f, 'esperado')));
+        r.u = ixTxt(get(f, 'u'), 40); r.obs = ixTxt(get(f, 'obs'), 90);
+        var k = r.caja + '|' + r.abierto;
+        if(r.abierto != null){ if(vistos[k]) r.errores.push('turno repetido en el archivo (fila ' + vistos[k] + ')'); else vistos[k] = r.n; }
+        r.ex = r.abierto != null ? S.db.turnos.filter(function(t){ return nombreCajaDe(t) === r.caja && t.abierto === r.abierto; })[0] || null : null;
+        r.accion = r.errores.length ? 'error' : (r.ex ? 'omitir' : 'crear');
+        r.txt = r.caja + ' · ' + (r.abierto ? fechaCorta(r.abierto) : '?') + ' · contado ' + money(r.contado) + (r.ex ? ' · ya existe' : '');
+        out.push(r);
+      });
+      return out;
+    },
+    aplicar:function(rows, lote){
+      rows.forEach(function(r){
+        if(r.accion !== 'crear') return;
+        var esp = r.esperado == null ? r.inicial : r.esperado;
+        ixCrear(lote, 'turnos', {
+          id:uid(), disp:'importado', caja:r.caja, abierto:r.abierto, cerrado:r.cerrado, inicial:r.inicial,
+          contado:r.contado, esperado:esp, dif:r2(r.contado - esp), obs:r.obs, u:r.u || S.user, uCierre:r.u || S.user,
+          movs:[], importada:true, lote:lote.id
+        });
+      });
+      return Promise.resolve();
+    },
+    extra:function(){ return 'Las cajas importadas son histórico: quedan marcadas como importadas, sin sello de integridad y sin movimientos.'; }
+  };
+
+  /* ---------------------------- ASISTENTE ---------------------------- */
+  function ixImportar(ent){
+    var E = IX_ENT[ent];
+    var st = { filas:null, head:[], map:{}, pol:'actualizar', rows:null, archivo:'' };
+    function pasos(n){
+      return '<div class="imp-steps">' + ['Archivo','Columnas','Vista previa'].map(function(t, i){
+        return '<span class="' + (i <= n ? 'on' : '') + '">' + (i + 1) + ' ' + t + '</span>';
+      }).join('') + '</div>';
+    }
+    function get(f, k){ var i = st.map[k]; return i == null || i === '' ? '' : String(f[+i] == null ? '' : f[+i]).trim(); }
+
+    function paso1(){
+      modal({
+        title:'Importar ' + E.titulo, sub:'CSV o Excel (.xlsx)', wide:true,
+        body: pasos(0) +
+          '<div class="note"><span class="ic">▦</span><div>La primera fila tiene que tener los títulos de las columnas. ' +
+          'Si exportaste desde este sistema, el archivo ya viene listo. ' +
+          '<button class="btn sm" type="button" id="ix-plant">Descargar plantilla</button></div></div>' +
+          '<input class="inp" id="ix-file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="margin-top:14px">',
+        onOpen:function(box){
+          $('#ix-plant', box).addEventListener('click', function(){
+            var pl = IX_PLANTILLAS[ent];
+            if(pl) ixBajar('plantilla-' + E.titulo, pl);
+          });
+        },
+        buttons:[{ t:'Cancelar', cls:'ghost' }, { t:'Siguiente', cls:'gold', fn:function(box){
+          var f = $('#ix-file', box).files[0];
+          if(!f){ toast('Elegí un archivo', 'bad'); return false; }
+          if(f.size > 15 * 1024 * 1024){ toast('El archivo es muy grande (máximo 15 MB)', 'bad'); return false; }
+          st.archivo = clean(f.name, 80);
+          var lectura = /\.xlsx$/i.test(f.name) ? f.arrayBuffer().then(leerXLSX) : f.text().then(parseCSV);
+          lectura.then(function(filas){
+            if(!filas || filas.length < 2){ toast('El archivo no tiene filas para importar', 'bad'); return; }
+            if(filas.length - 1 > IX_MAX_FILAS){ toast('Máximo ' + IX_MAX_FILAS + ' filas por archivo: dividilo en partes', 'bad'); return; }
+            st.filas = filas;
+            st.head = filas[0].map(function(h){ return clean(h, 40); });
+            E.campos.forEach(function(c){
+              var i = st.head.map(ixNorm).findIndex(function(h){ return c[2].indexOf(h) !== -1; });
+              st.map[c[0]] = i >= 0 ? String(i) : '';
+            });
+            closeModal(); setTimeout(paso2, 60);
+          }, function(e){ toast(e.message || 'No se pudo leer el archivo', 'bad'); });
+          return false;
+        } }]
+      });
+    }
+    function paso2(){
+      var opts = '<option value="">— no importar —</option>' + st.head.map(function(h, i){
+        return '<option value="' + i + '">' + esc(h || ('columna ' + (i + 1))) + '</option>';
+      }).join('');
+      modal({
+        title:'Importar ' + E.titulo, sub:st.archivo + ' · ' + (st.filas.length - 1) + ' filas', wide:true,
+        body: pasos(1) +
+          '<div class="grid2" style="gap:10px">' + E.campos.map(function(c){
+            return '<div class="f"><label>' + esc(c[1]) + (c[3] ? ' *' : '') + '</label><select class="inp" data-ixm="' + c[0] + '">' + opts + '</select></div>';
+          }).join('') + '</div>' +
+          (ent === 'boletas' ? '' : '<div class="f" style="margin-top:12px"><label>Si ya existe</label><select class="inp" id="ix-pol">' +
+            '<option value="actualizar">Actualizar el existente</option><option value="omitir">Omitirlo</option></select></div>') +
+          '<div class="tiny muted" style="margin-top:8px">* obligatorio. ' + (ent === 'boletas' || ent === 'cajas' ? 'Lo que ya existe nunca se pisa: se omite.' : '') + '</div>',
+        onOpen:function(box){
+          $$('[data-ixm]', box).forEach(function(s){ s.value = st.map[s.getAttribute('data-ixm')] || ''; });
+          var p = $('#ix-pol', box); if(p) p.value = st.pol;
+        },
+        buttons:[{ t:'Cancelar', cls:'ghost' }, { t:'Vista previa', cls:'gold', fn:function(box){
+          $$('[data-ixm]', box).forEach(function(s){ st.map[s.getAttribute('data-ixm')] = s.value; });
+          var p = $('#ix-pol', box); if(p) st.pol = p.value;
+          var falta = E.campos.filter(function(c){ return c[3] && st.map[c[0]] === ''; })[0];
+          if(falta){ toast('Falta elegir la columna: ' + falta[1], 'bad'); return false; }
+          st.rows = E.analizar(get, st.filas.slice(1), st.pol);
+          closeModal(); setTimeout(paso3, 60);
+          return false;
+        } }]
+      });
+    }
+    function cuenta(a){ return st.rows.filter(function(r){ return r.accion === a; }).length; }
+    function paso3(){
+      var nC = cuenta('crear'), nA = cuenta('actualizar'), nO = cuenta('omitir'), nE = cuenta('error');
+      var errs = st.rows.filter(function(r){ return r.errores.length; }).slice(0, 25);
+      var extra = E.extra ? E.extra(st.rows) : '';
+      modal({
+        title:'Importar ' + E.titulo, sub:'Vista previa · todavía no se guardó nada', wide:true,
+        body: pasos(2) +
+          '<div class="inline" style="gap:8px;flex-wrap:wrap;margin:6px 0 12px">' +
+            '<span class="pill ok">' + nC + ' nuevos</span><span class="pill">' + nA + ' a actualizar</span>' +
+            '<span class="pill">' + nO + ' omitidos</span><span class="pill ' + (nE ? 'bad' : '') + '">' + nE + ' con errores</span></div>' +
+          (extra ? '<div class="note warn" style="margin-bottom:10px"><span class="ic">ℹ</span><div>' + esc(extra) + '</div></div>' : '') +
+          (errs.length ? '<div class="note bad" style="margin-bottom:10px"><span class="ic">⚠</span><div><b>Errores (esas filas no se importan):</b><br>' +
+            errs.map(function(r){ return 'Fila ' + r.n + ': ' + esc(r.errores.join('; ')); }).join('<br>') +
+            (st.rows.filter(function(r){ return r.errores.length; }).length > 25 ? '<br>…y más' : '') + '</div></div>' : '') +
+          '<div class="rowlist" style="max-height:34vh;overflow:auto">' + st.rows.slice(0, 12).map(function(r){
+            return '<div class="r"><span class="nm">' + esc(r.txt || ('Fila ' + r.n)) + '</span><span class="vl tiny">' +
+              ({ crear:'nuevo', actualizar:'actualiza', omitir:'omite', error:'error' }[r.accion]) + '</span></div>';
+          }).join('') + (st.rows.length > 12 ? '<div class="tiny muted" style="padding:8px">…y ' + (st.rows.length - 12) + ' más</div>' : '') + '</div>',
+        buttons:[
+          { t:'Cancelar', cls:'ghost' },
+          { t:'← Columnas', cls:'', fn:function(){ closeModal(); setTimeout(paso2, 60); return false; } },
+          { t:'Probar (sin guardar)', cls:'', fn:function(){
+              toast('Prueba OK: se crearían ' + nC + ', se actualizarían ' + nA + ' y ' + nE + ' filas tienen errores. No se guardó nada.', nE ? 'bad' : 'ok');
+              return false;
+            } },
+          { t:'Importar ' + (nC + nA), cls:'gold', fn:function(){
+              if(!(nC + nA)){ toast('No hay filas válidas para importar', 'bad'); return false; }
+              confirmar(); return false;
+            } }
+        ]
+      });
+    }
+    function confirmar(){
+      var lote = { id:uid(), ent:ent, ts:Date.now(), u:S.user, archivo:st.archivo, creados:{}, prev:{}, n:0, act:0 };
+      Promise.resolve().then(function(){ return E.aplicar(st.rows, lote); }).then(function(){
+        lote.n = cuenta('crear'); lote.act = cuenta('actualizar');
+        var ls = ixLotes(); ls.push(lote);
+        while(ls.length > 15) ls.shift();
+        audit('importar.' + ent, st.archivo + ' · ' + lote.n + ' nuevos, ' + lote.act + ' actualizados, ' + cuenta('error') + ' con error');
+        closeModal();
+        refresh();
+        toast(E.plural + ': ' + lote.n + ' nuevos' + (lote.act ? ', ' + lote.act + ' actualizados' : '') + '. Se puede deshacer desde Importar / Exportar.', 'ok');
+      }).catch(function(e){
+        ixRevertir(lote);
+        toast('No se pudo importar y no se guardó nada: ' + (e && e.message ? e.message : 'error inesperado'), 'bad');
+      });
+    }
+    paso1();
+  }
+
+  /* ------------------------- DESHACER UN LOTE ------------------------- */
+  function ixDeshacerUltimo(){
+    var ls = ixLotes(), l = ls[ls.length - 1];
+    if(!l){ toast('No hay importaciones para deshacer', 'bad'); return; }
+    var cre = l.creados || {};
+    if(cre.clientes && S.db.ventas.some(function(v){ return cre.clientes.indexOf(v.clienteId) !== -1 && v.lote !== l.id; })){
+      toast('No se puede deshacer: ya hay ventas a nombre de los clientes importados', 'bad'); return;
+    }
+    if(cre.cats && S.db.prod.some(function(p){ return cre.cats.indexOf(p.cat) !== -1; })){
+      toast('No se puede deshacer: ya hay productos en los rubros importados', 'bad'); return;
+    }
+    ask('Deshacer importación', 'Se va a deshacer la importación de ' + (IX_ENT[l.ent] ? IX_ENT[l.ent].titulo : l.ent) + ' del ' + fechaCorta(l.ts) +
+      ' (' + l.n + ' nuevos' + (l.act ? ', ' + l.act + ' actualizados' : '') + '). Lo cargado a mano después no se toca.', function(){
+      ixRevertir(l);
+      ls.pop();
+      audit('importar.deshecho', l.ent + ' · ' + l.archivo);
+      refresh();
+      toast('Importación deshecha', 'ok');
+    }, true);
+  }
+
+  /* ------------------------------ PANEL ------------------------------ */
+  function ixRango(titulo, fn){
+    var hoy = new Date(), ini = ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+    modal({
+      title:titulo, slim:true,
+      body:'<div class="f"><label for="ix-d">Desde</label><input class="inp" id="ix-d" type="date" value="' + ini + '"></div>' +
+           '<div class="f" style="margin-top:10px"><label for="ix-h">Hasta</label><input class="inp" id="ix-h" type="date" value="' + ymd(hoy) + '"></div>' +
+           '<div class="tiny muted" style="margin-top:10px">Vacío = sin límite.</div>',
+      buttons:[{ t:'Cancelar', cls:'ghost' }, { t:'Descargar CSV', cls:'gold', fn:function(box){
+        fn($('#ix-d', box).value, $('#ix-h', box).value);
+      } }]
+    });
+  }
+  function ixExportar(ent){
+    function fin(n){ audit('exportar.' + ent, n + ' registros'); toast('CSV descargado (' + n + ' registros)', 'ok'); }
+    if(ent === 'articulos') fin(ixExpArticulos());
+    else if(ent === 'rubros') fin(ixExpRubros());
+    else if(ent === 'clientes'){
+      ask('Exportar clientes', 'El archivo contiene datos personales (WhatsApp, email, cumpleaños). Guardalo con cuidado y no lo compartas por canales abiertos.',
+        function(){ fin(ixExpClientes()); });
+    }
+    else if(ent === 'boletas') ixRango('Exportar boletas', function(d, h){ fin(ixExpBoletas(d, h)); });
+    else if(ent === 'cajas') ixRango('Exportar cajas', function(d, h){ fin(ixExpCajas(d, h)); });
+  }
+  var IX_LISTA = [
+    ['articulos', 'Artículos', 'Productos con precio, costo, stock, código de barras y rubro'],
+    ['rubros', 'Rubros', 'Categorías del catálogo y del menú digital'],
+    ['clientes', 'Clientes', 'Con consentimiento obligatorio (Ley 25.326)'],
+    ['boletas', 'Boletas', 'Ventas y comprobantes, una fila por ítem'],
+    ['cajas', 'Cajas', 'Turnos con apertura, cierre, arqueo y diferencia']
+  ];
+  function ixAbrir(){
+    if(S.rol !== 'admin'){ toast('Importar y exportar lo hace un administrador', 'bad'); return; }
+    var ult = ixLotes()[ixLotes().length - 1];
+    modal({
+      title:'Importar / Exportar', sub:'Pasá tus datos de y hacia Excel', wide:true,
+      body:'<div class="rowlist">' + IX_LISTA.map(function(x){
+        return '<div class="r" style="gap:10px;flex-wrap:wrap"><span class="nm"><b>' + x[1] + '</b><br><span class="tiny muted">' + x[2] + '</span></span>' +
+          '<span class="inline" style="gap:8px"><button class="btn sm" type="button" data-ixe="' + x[0] + '">Exportar CSV</button>' +
+          '<button class="btn sm gold" type="button" data-ixi="' + x[0] + '">Importar</button></span></div>';
+      }).join('') + '</div>' +
+      '<div class="note" style="margin-top:14px"><span class="ic">ℹ</span><div>Los CSV se abren directo en Excel. Al importar boletas y cajas se carga <b>histórico</b>: ' +
+        'no mueve stock ni caja y queda marcado como importado. Los sellos del programa de lealtad no se importan (antifraude).</div></div>' +
+      '<div class="inline" style="margin-top:12px"><button class="btn" type="button" id="ix-undo"' + (ult ? '' : ' disabled') + '>Deshacer última importación' +
+        (ult ? ' (' + esc(IX_ENT[ult.ent] ? IX_ENT[ult.ent].titulo : ult.ent) + ', ' + esc(fechaCorta(ult.ts)) + ')' : '') + '</button></div>',
+      onOpen:function(box){
+        $$('[data-ixe]', box).forEach(function(b){ b.addEventListener('click', function(){ ixExportar(b.getAttribute('data-ixe')); }); });
+        $$('[data-ixi]', box).forEach(function(b){
+          b.addEventListener('click', function(){
+            var e = b.getAttribute('data-ixi');
+            closeModal();
+            setTimeout(function(){ if(e === 'articulos') importarAsistente(); else ixImportar(e); }, 60);
+          });
+        });
+        $('#ix-undo', box).addEventListener('click', function(){ closeModal(); setTimeout(ixDeshacerUltimo, 60); });
+      },
+      buttons:[{ t:'Cerrar', cls:'ghost' }]
     });
   }
 
