@@ -15603,7 +15603,7 @@ var QR = (function(){
       var cfg = k.emp[eid], e = S.db.empleados.filter(function(x){ return x.id === eid; })[0];
       if(!cfg || !cfg.on || !e) return;
       var h = horasTrabajadas(eid, t.abierto, t.cerrado).horas, rate = Math.max(0, Number(cfg.rate) || 0);
-      l.sueldos.push({ emp:eid, nom:e.nom, horas:Math.round(h * 100) / 100, rate:rate, monto:r2(h * rate) });
+      l.sueldos.push({ emp:eid, nom:e.nom, horas:Math.round(h * 100) / 100, horasFichadas:Math.round(h * 100) / 100, rate:rate, monto:r2(h * rate) });
     });
     /* "lo que merendó": gastos del turno cuyo detalle dice merienda; el resto se puede sumar a mano */
     l.gastos.monto = r2(sum(S.db.gastos.filter(function(g){ return g.ts >= t.abierto && g.ts <= t.cerrado && /meriend/i.test((g.det || '') + ' ' + (g.cat || '')); }), function(g){ return g.monto; }));
@@ -15625,9 +15625,11 @@ var QR = (function(){
       var pg = last ? rest.pool : r2(pool * pc / 100), ps = last ? rest.sueldo : r2(sueldo * pc / 100), pga = last ? rest.gastos : r2(gastos * pc / 100);
       rest.pool = r2(rest.pool - pg); rest.sueldo = r2(rest.sueldo - ps); rest.gastos = r2(rest.gastos - pga);
       var imp = r2((l.impuestos || {})[a.id] || 0);
-      filas.push({ id:a.id, nom:a.nom, dueno:a.dueno, pc:pc, parteGan:pg, sueldo:ps, gastos:pga, imp:imp, gan:r2(pg - ps - pga - imp) });
+      /* orden: 1º el sueldo del empleado (+ merienda), 2º los impuestos, 3º lo que sobra es ganancia */
+      var disp = r2(pg - ps - pga), cub = r2(Math.min(imp, Math.max(0, disp)));
+      filas.push({ id:a.id, nom:a.nom, dueno:a.dueno, pc:pc, parteGan:pg, sueldo:ps, gastos:pga, imp:imp, disp:disp, falta:r2(imp - cub), gan:r2(pg - ps - pga - imp) });
     });
-    return { pool:pool, sueldo:sueldo, gastos:gastos, filas:filas, impuestos:r2(sum(filas, function(f){ return f.imp; })), totalGan:r2(sum(filas, function(f){ return f.gan; })) };
+    return { pool:pool, sueldo:sueldo, gastos:gastos, filas:filas, impuestos:r2(sum(filas, function(f){ return f.imp; })), faltaImp:r2(sum(filas, function(f){ return f.falta; })), totalGan:r2(sum(filas, function(f){ return f.gan; })) };
   }
   function lqFechaTxt(ts){
     var d = new Date(ts);
@@ -15650,14 +15652,19 @@ var QR = (function(){
     l.areas.forEach(function(a){ L.push(lqEtiqueta(a) + ' : vendió ' + money(a.ventas) + ' · ganancia ' + money(a.ganancia)); });
     L.push('');
     if(soc.length){
+      /* el sueldo diario del empleado = horas × valor por hora + merienda: se muestra junto y se reparte entre los socios */
+      var merienda = l.sueldos.length && calc.gastos > 0 && /meriend/i.test(l.gastos.det || '');
       if(l.sueldos.length){
-        L.push(l.sueldos.map(function(s){ return s.nom.toUpperCase() + ' (' + lqHoras(s.horas) + ')'; }).join(', ') + ' empleado:');
-        soc.forEach(function(a, i){ var f = calc.filas[i]; L.push('SUELDO ' + ini[i] + ' : - ' + money(f.sueldo)); });
+        l.sueldos.forEach(function(s){ L.push('EMPLEADO (' + s.nom + ') : ' + lqHoras(s.horas) + ' × ' + money(s.rate) + ' = ' + money(s.monto)); });
+        if(merienda) L.push('MERIENDA : ' + money(calc.gastos));
+        L.push('SUELDO DEL DÍA : ' + money(calc.sueldo + (merienda ? calc.gastos : 0)));
+        soc.forEach(function(a, i){ var f = calc.filas[i]; L.push((f.dueno || f.nom).toUpperCase() + ' : - ' + money(f.sueldo + (merienda ? f.gastos : 0))); });
+        L.push('');
       }
-      L.push('GASTOS : - ' + money(calc.gastos) + (l.gastos.det ? ' (' + l.gastos.det + ')' : '') + (soc.length > 1 ? ' · se reparte' : ''));
+      if(!merienda) L.push('GASTOS : - ' + money(calc.gastos) + (l.gastos.det ? ' (' + l.gastos.det + ')' : '') + (soc.length > 1 ? ' · se reparte' : ''));
       L.push('');
       L.push('IMPUESTOS :');
-      calc.filas.forEach(function(f){ L.push((f.dueno || f.nom).toUpperCase() + ' : ' + money(f.imp)); });
+      calc.filas.forEach(function(f){ L.push((f.dueno || f.nom).toUpperCase() + ' : ' + money(f.imp) + (f.falta > 0.004 ? ' 🔴 NO ALCANZA: faltan ' + money(f.falta) : '')); });
       L.push('');
       L.push('GANANCIA :');
       calc.filas.forEach(function(f){ L.push((f.dueno || f.nom).toUpperCase() + ' : ' + lqM(f.gan)); });
@@ -15700,7 +15707,8 @@ var QR = (function(){
       var dif = Math.abs(sum(l.areas, function(a){ return a.ventas; }) - rs.totalVentas);
       if(dif > 1) A.push('La suma de los rubros difiere ' + money(dif) + ' del mostrador total (productos borrados o ventas sin ítems).');
       if(rs.medios && rs.medios.cuenta) A.push(money(rs.medios.cuenta) + ' del total quedó a cuenta corriente (todavía no se cobró).');
-      if(!l.sueldos.length && Object.keys(lqCfg().emp).some(function(x){ return lqCfg().emp[x].on; })) A.push('Ningún empleado tiene horas fichadas en este turno.');
+      if(!l.sueldos.length) A.push('No hay sueldo de empleado en esta liquidación: si alguien trabajó, cargalo abajo en "Cargar empleado y horas a mano" (horas × valor por hora) y se descuenta antes de los impuestos.');
+      else if(l.sueldos.every(function(x){ return !(x.horas > 0); })) A.push('Ningún empleado tiene horas en este turno: completá las horas trabajadas.');
       return A;
     }
     function bodyHtml(){
@@ -15724,12 +15732,23 @@ var QR = (function(){
       });
       if(soc().length){
         h += '<div class="c-ttl" style="margin-top:14px">Reparto de la ganancia</div>';
-        if(l.sueldos.length){
-          h += l.sueldos.map(function(s, i){
-            return '<div class="f"><label for="lq-s' + i + '">Sueldo de ' + esc(s.nom) + ' <span class="tiny muted">(' + esc(lqHoras(s.horas)) + ' × ' + money(s.rate) + ')</span></label>' +
-                   '<input class="inp" id="lq-s' + i + '" type="number" inputmode="decimal" min="0" step="100" value="' + esc(s.monto) + '"></div>';
-          }).join('');
-        }
+        h += '<div class="c-ttl" style="margin-top:14px">Empleado: horas y sueldo del día</div>' +
+             '<div class="tiny muted">Sueldo del día = horas × valor por hora + merienda. Primero se paga eso, después los impuestos de cada uno y lo que sobra es la ganancia.</div>';
+        l.sueldos.forEach(function(s, i){
+          if(s.manual) return;
+          h += '<div class="lq-emp" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0;padding:10px;border:1px solid var(--line,rgba(0,0,0,.12));border-radius:12px">' +
+               '<div class="f" style="grid-column:1/-1"><b>' + esc(s.nom) + '</b> <span class="tiny muted">(horas fichadas: ' + esc(lqHoras(s.horasFichadas != null ? s.horasFichadas : s.horas)) + ')</span></div>' +
+               '<div class="f"><label for="lq-h' + i + '">Horas trabajadas</label><input class="inp" id="lq-h' + i + '" type="number" inputmode="decimal" min="0" step="0.25" value="' + esc(s.horas) + '"></div>' +
+               '<div class="f"><label for="lq-r' + i + '">Valor por hora $</label><input class="inp" id="lq-r' + i + '" type="number" inputmode="decimal" min="0" step="50" value="' + esc(s.rate) + '"></div>' +
+               '<div class="f"><label for="lq-s' + i + '">Sueldo por horas $</label><input class="inp" id="lq-s' + i + '" type="number" inputmode="decimal" min="0" step="100" value="' + esc(s.monto) + '"></div></div>';
+        });
+        var mn = l.manual || { nom:'', horas:'', rate:'', monto:'' };
+        h += '<details class="lq-man" style="margin:8px 0"' + (l.manual && l.manual.monto > 0 ? ' open' : '') + '><summary style="cursor:pointer;min-height:44px;display:flex;align-items:center"><b>' + (l.sueldos.some(function(x){ return !x.manual; }) ? '+ Otro empleado (cargar a mano)' : '+ Cargar empleado y horas a mano') + '</b></summary>' +
+             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:6px">' +
+             '<div class="f"><label for="lq-mn">Nombre</label><input class="inp" id="lq-mn" type="text" maxlength="30" placeholder="Ej.: Guille" value="' + esc(mn.nom) + '"></div>' +
+             '<div class="f"><label for="lq-mh">Horas trabajadas</label><input class="inp" id="lq-mh" type="number" inputmode="decimal" min="0" step="0.25" placeholder="0" value="' + esc(mn.horas) + '"></div>' +
+             '<div class="f"><label for="lq-mr">Valor por hora $</label><input class="inp" id="lq-mr" type="number" inputmode="decimal" min="0" step="50" placeholder="0" value="' + esc(mn.rate) + '"></div>' +
+             '<div class="f"><label for="lq-ms">Sueldo por horas $</label><input class="inp" id="lq-ms" type="number" inputmode="decimal" min="0" step="100" placeholder="0" value="' + esc(mn.monto) + '"></div></div></details>';
         h += '<div class="f"><label for="lq-g">Gastos del día <span class="tiny muted">(merienda, etc.)</span></label>' +
              '<input class="inp" id="lq-g" type="number" inputmode="decimal" min="0" step="100" value="' + esc(l.gastos.monto || 0) + '"></div>' +
              '<div class="f"><label for="lq-gd">Detalle de los gastos</label><input class="inp" id="lq-gd" type="text" maxlength="60" value="' + esc(l.gastos.det || '') + '"></div>';
@@ -15739,12 +15758,26 @@ var QR = (function(){
         }).join('');
       }
       h += '<div class="f"><label for="lq-nota">Nota</label><input class="inp" id="lq-nota" type="text" maxlength="120" value="' + esc(l.nota || '') + '"></div>';
+      h += '<div id="lq-alerta"></div>';
       h += '<div class="c-ttl" style="margin-top:14px">Resumen</div><pre id="lq-txt" class="lq-txt" style="white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--sunk,rgba(0,0,0,.05));padding:12px;border-radius:12px;margin:0"></pre>';
       return h;
     }
     function leer(box){
       l.cerro = clean($('#lq-cerro', box).value, 30);
-      l.sueldos.forEach(function(s, i){ var el = $('#lq-s' + i, box); if(el) s.monto = Math.max(0, r2(numCampo(el))); });
+      l.sueldos.forEach(function(s, i){
+        var el = $('#lq-s' + i, box), he = $('#lq-h' + i, box), re = $('#lq-r' + i, box);
+        if(s.manual || !el) return;
+        if(s.horasFichadas == null) s.horasFichadas = s.horas;
+        s.monto = Math.max(0, r2(numCampo(el)));
+        if(he) s.horas = Math.max(0, r2(numCampo(he)));
+        if(re) s.rate = Math.max(0, r2(numCampo(re)));
+      });
+      if($('#lq-mn', box)){
+        l.sueldos = l.sueldos.filter(function(x){ return !x.manual; });
+        var mm = { nom:clean($('#lq-mn', box).value, 30), horas:Math.max(0, r2(numCampo($('#lq-mh', box)))), rate:Math.max(0, r2(numCampo($('#lq-mr', box)))), monto:Math.max(0, r2(numCampo($('#lq-ms', box)))) };
+        l.manual = mm;
+        if(mm.monto > 0) l.sueldos.push({ emp:'manual', nom:mm.nom || 'Empleado', horas:mm.horas, rate:mm.rate, monto:mm.monto, manual:true });
+      }
       var g = $('#lq-g', box); if(g) l.gastos.monto = Math.max(0, r2(numCampo(g)));
       var gd = $('#lq-gd', box); if(gd) l.gastos.det = clean(gd.value, 60);
       soc().forEach(function(a){ var el = $('#lq-i-' + a.id, box); if(el) l.impuestos[a.id] = Math.max(0, r2(numCampo(el))); });
@@ -15752,12 +15785,27 @@ var QR = (function(){
     }
     function pintar(box){
       leer(box);
-      $('#lq-txt', box).textContent = lqTexto(l, rs, lqCalcular(l));
+      var calc = lqCalcular(l);
+      $('#lq-txt', box).textContent = lqTexto(l, rs, calc);
+      var al = $('#lq-alerta', box);
+      if(al) al.innerHTML = calc.filas.filter(function(f){ return f.falta > 0.004; }).map(function(f){
+        return '<div class="note bad" style="margin-top:10px;border-color:#c0392b;color:#c0392b"><span class="ic">⚠</span><div><b>Impuestos de ' + esc(f.dueno || f.nom) + ': NO ALCANZA.</b> ' +
+               'Después del sueldo del empleado quedan ' + esc(money(Math.max(0, f.disp))) + ' y hay que apartar ' + esc(money(f.imp)) + ': <b style="color:#c0392b">faltan ' + esc(money(f.falta)) + '</b>.</div></div>';
+      }).join('');
     }
     modal({
       title:'Liquidación del día', sub:nombreCajaDe(t) + ' · ' + fechaHoraExacta(t.cerrado).slice(0, 16), wide:true,
       body:bodyHtml(),
       onOpen:function(box){
+        /* horas × valor por hora = sueldo por horas (se puede corregir el monto a mano después) */
+        function enlazar(h, r, m){
+          var eh = $(h, box), er = $(r, box), em = $(m, box);
+          if(!eh || !er || !em) return;
+          var calc = function(){ em.value = String(r2(Math.max(0, numCampo(eh)) * Math.max(0, numCampo(er)))); };
+          eh.addEventListener('input', calc); er.addEventListener('input', calc);
+        }
+        l.sueldos.forEach(function(x, i){ if(!x.manual) enlazar('#lq-h' + i, '#lq-r' + i, '#lq-s' + i); });
+        enlazar('#lq-mh', '#lq-mr', '#lq-ms');
         $$('input', box).forEach(function(i){ i.addEventListener('input', function(){ pintar(box); }); });
         pintar(box);
       },
