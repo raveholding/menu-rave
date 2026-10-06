@@ -9122,6 +9122,8 @@ var QR = (function(){
             '<input class="inp" id="e-dni" type="text" inputmode="numeric" maxlength="12" value="' + esc(e ? (CLARO['dni' + e.id] || '') : '') + '"></div>' +
           '<div class="f"><label for="e-ing">Fecha de ingreso</label>' +
             '<input class="inp" id="e-ing" type="date" value="' + esc(e && e.ingreso ? ymd(new Date(e.ingreso)) : ymd()) + '"></div>' +
+          '<div class="f"><label for="e-rate">Valor por hora $ <span class="help">(para el sueldo del día)</span></label>' +
+            '<input class="inp" id="e-rate" type="number" inputmode="decimal" min="0" step="50" value="' + esc(e && e.rate ? e.rate : '') + '" placeholder="0"></div>' +
         '</div>' +
         '<label class="chk" style="margin-top:14px"><input type="checkbox" id="e-act"' + (!e || e.activo !== false ? ' checked' : '') + '>' +
           '<span>Activo (puede fichar)</span></label>' +
@@ -9146,6 +9148,7 @@ var QR = (function(){
             target.puesto = clean($('#e-puesto', box).value, 40);
             target.ingreso = new Date(($('#e-ing', box).value || ymd()) + 'T00:00:00').getTime();
             target.activo = $('#e-act', box).checked;
+            target.rate = Math.max(0, Math.round((Number($('#e-rate', box).value) || 0) * 100) / 100);
             encField(dni).then(function(f){
               target.dni = f;
               CLARO['dni' + target.id] = dni;
@@ -15605,11 +15608,12 @@ var QR = (function(){
       id:t.id, turnoId:t.id, ts:Date.now(), u:S.user, cerro:lqNombreUsuario(t.uCierre || t.u), fecha:t.cerrado, caja:nombreCajaDe(t),
       areas:lqAreasTurno(t), sueldos:[], gastos:{ monto:0, det:'' }, impuestos:{}, parte:{}, nota:''
     };
-    Object.keys(k.emp).forEach(function(eid){
-      var cfg = k.emp[eid], e = S.db.empleados.filter(function(x){ return x.id === eid; })[0];
-      if(!cfg || !cfg.on || !e) return;
-      var h = horasTrabajadas(eid, t.abierto, t.cerrado).horas, rate = Math.max(0, Number(cfg.rate) || 0);
-      l.sueldos.push({ emp:eid, nom:e.nom, horas:Math.round(h * 100) / 100, horasFichadas:Math.round(h * 100) / 100, rate:rate, monto:r2(h * rate) });
+    (S.db.empleados || []).forEach(function(e){
+      var cfg = k.emp[e.id], rate = Math.max(0, Number(cfg && cfg.rate) || Number(e.rate) || 0);
+      var h = horasTrabajadas(e.id, t.abierto, t.cerrado).horas;
+      var activa = !!(cfg && cfg.on);
+      if(!activa && !(rate > 0 && h > 0)) return;
+      l.sueldos.push({ emp:e.id, nom:e.nom, horas:Math.round(h * 100) / 100, horasFichadas:Math.round(h * 100) / 100, rate:rate, monto:r2(h * rate) });
     });
     /* "lo que merendó": gastos del turno cuyo detalle dice merienda; el resto se puede sumar a mano */
     l.gastos.monto = r2(sum(S.db.gastos.filter(function(g){ return g.ts >= t.abierto && g.ts <= t.cerrado && /meriend/i.test((g.det || '') + ' ' + (g.cat || '')); }), function(g){ return g.monto; }));
@@ -15659,15 +15663,23 @@ var QR = (function(){
     L.push('');
     if(soc.length){
       /* el sueldo diario del empleado = horas × valor por hora + merienda: se muestra junto y se reparte entre los socios */
-      var merienda = l.sueldos.length && calc.gastos > 0 && /meriend/i.test(l.gastos.det || '');
+      var merienda = l.sueldos.length && calc.gastos > 0;
       if(l.sueldos.length){
-        l.sueldos.forEach(function(s){ L.push('EMPLEADO (' + s.nom + ') : ' + lqHoras(s.horas) + ' × ' + money(s.rate) + ' = ' + money(s.monto)); });
-        if(merienda) L.push('MERIENDA : ' + money(calc.gastos));
-        L.push('SUELDO DEL DÍA : ' + money(calc.sueldo + (merienda ? calc.gastos : 0)));
+        var ini = lqIniciales(soc.map(function(a){ return a; }));
+        l.sueldos.forEach(function(s){
+          L.push(String(s.nom || 'Empleado').toUpperCase() + ' : ' + lqHoras(s.horas) + ' × ' + money(s.rate) + ' = ' + money(s.monto));
+          soc.forEach(function(a, i){
+            var f = calc.filas[i], parte = calc.sueldo > 0 ? r2(s.monto * f.sueldo / calc.sueldo) : r2(s.monto / soc.length);
+            L.push('SUELDO ' + ini[i] + ' : ' + money(parte));
+          });
+        });
+        if(merienda) L.push('GASTOS : ' + money(calc.gastos) + (l.gastos.det ? ' (' + l.gastos.det + ' · entra en su sueldo)' : '') + (soc.length > 1 ? ' · mitad cada uno' : ''));
+        L.push('TOTAL PAGADO AL EMPLEADO : ' + money(calc.sueldo + (merienda ? calc.gastos : 0)));
         soc.forEach(function(a, i){ var f = calc.filas[i]; L.push((f.dueno || f.nom).toUpperCase() + ' : - ' + money(f.sueldo + (merienda ? f.gastos : 0))); });
         L.push('');
+      } else {
+        L.push('GASTOS : - ' + money(calc.gastos) + (l.gastos.det ? ' (' + l.gastos.det + ')' : '') + (soc.length > 1 ? ' · se reparte' : ''));
       }
-      if(!merienda) L.push('GASTOS : - ' + money(calc.gastos) + (l.gastos.det ? ' (' + l.gastos.det + ')' : '') + (soc.length > 1 ? ' · se reparte' : ''));
       L.push('');
       L.push('IMPUESTOS :');
       calc.filas.forEach(function(f){ L.push((f.dueno || f.nom).toUpperCase() + ' : ' + money(f.imp) + (f.falta > 0.004 ? ' 🔴 NO ALCANZA: faltan ' + money(f.falta) : '')); });
