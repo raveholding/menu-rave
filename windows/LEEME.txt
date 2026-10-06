@@ -11,6 +11,8 @@ INSTALAR
   No pide permisos de administrador. Queda:
   - El ícono "Sistema RAVE" en el Escritorio.
   - En el menú Inicio, la carpeta "Sistema RAVE" con: abrir, Actualizar y Desinstalar.
+  - En el Escritorio, además, "Sistema RAVE (impresión directa)": igual al sistema, pero imprime los tickets sin
+    mostrar la ventana de impresión, en la impresora predeterminada de Windows. Cerrá el sistema antes de usarlo.
   - "Sistema RAVE" en Configuración > Aplicaciones instaladas.
   Necesita Microsoft Edge o Google Chrome (Windows 10 y 11 ya traen Edge).
 
@@ -43,3 +45,11 @@ NOVEDADES DE LA 1.2
 - Recuperación de contraseña con código de recuperación y pedido de ayuda a Rave Holding
   (WhatsApp +54 9 387 514-3900 · raveholding@gmail.com).
 - GUARDÁ el código de recuperación que muestra el sistema: sin la contraseña ni el código, los datos no se pueden recuperar.
+
+NOVEDADES DE LA 1.5.4
+- Impresoras Wi-Fi / de red: Configuración > Periféricos > "Vincular agente" y después Manual > "Impresora de red".
+  El agente de impresión se enciende solo al abrir el sistema desde su acceso directo y sólo habla con tu red local.
+  Al vincular, Windows muestra un cartel de confirmación y después un código de 6 números que se escribe en el sistema.
+- Acceso "Sistema RAVE (impresión directa)": imprime tickets sin la ventana de impresión.
+- La carpeta del programa queda protegida: sólo tu usuario y los administradores pueden cambiarla.
+- Asistente de certificado ARCA, atajos F1-F12 en Vender, Ingreso/Egreso en el mostrador.

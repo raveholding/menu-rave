@@ -5,6 +5,7 @@
 //   - Dentro de C:\SistemaRAVE (el acceso directo): ABRE el sistema en una
 //     ventana propia de Edge o Chrome, sin barra de direcciones.
 //   - /actualizar y /desinstalar: lo que dicen.
+//
 // No pide permisos de administrador, no abre ventanas negras y queda
 // registrado en "Aplicaciones instaladas" de Windows.
 package main
@@ -18,11 +19,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
 	"time"
 	"unsafe"
+
+	"sistemarave/agente"
 
 	ole "github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
@@ -119,6 +123,9 @@ func buscarNavegador() string {
 	return ""
 }
 
+// impresionDirecta: acceso opcional "(impresión directa)". El acceso normal no cambia.
+var impresionDirecta bool
+
 func abrirSistema(dir string) error {
 	nav := buscarNavegador()
 	if nav == "" {
@@ -128,11 +135,76 @@ func abrirSistema(dir string) error {
 	if _, err := os.Stat(pagina); err != nil {
 		return fmt.Errorf("falta el archivo del sistema en %s: volvé a instalar", dir)
 	}
-	cmd := exec.Command(nav,
-		"--app="+urlArchivo(pagina)+"#panel",
-		"--user-data-dir="+filepath.Join(dir, "perfil"),
-		"--no-first-run", "--no-default-browser-check")
-	return cmd.Start()
+	args := []string{
+		"--app=" + urlArchivo(pagina) + "#panel",
+		"--user-data-dir=" + filepath.Join(dir, "perfil"),
+		"--no-first-run", "--no-default-browser-check"}
+	if impresionDirecta {
+		// imprime sin la ventana de impresión, directo a la impresora predeterminada de Windows
+		args = append(args, "--kiosk-printing")
+	}
+	iniciarAgente()
+	return exec.Command(nav, args...).Start()
+}
+
+// ---------------------------------------------------------------- agente de impresoras de red
+const agenteExe = "RaveAgente.exe"
+
+func carpetaAgente() string {
+	b := os.Getenv("LOCALAPPDATA")
+	if b == "" {
+		b = filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Local")
+	}
+	return filepath.Join(b, "SistemaRAVE")
+}
+
+// iniciarAgente copia este programa a una carpeta propia (así no traba las
+// actualizaciones) y lo deja corriendo en segundo plano, sólo en 127.0.0.1.
+// Si ya hay uno corriendo, la copia nueva se cierra sola (el puerto está tomado).
+func iniciarAgente() {
+	yo, err := os.Executable()
+	if err != nil {
+		return
+	}
+	dir := carpetaAgente()
+	os.MkdirAll(dir, 0o700)
+	copia := filepath.Join(dir, agenteExe)
+	if a, e1 := os.Stat(yo); e1 == nil {
+		if b, e2 := os.Stat(copia); e2 != nil || b.Size() != a.Size() || b.ModTime().Before(a.ModTime()) {
+			if datos, e3 := os.ReadFile(yo); e3 == nil {
+				os.WriteFile(copia, datos, 0o700) // si está en uso, queda la anterior
+			}
+		}
+	}
+	c := exec.Command(copia, "/agente")
+	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	c.Start()
+}
+
+func detenerAgente() {
+	c := exec.Command("taskkill", "/F", "/IM", agenteExe)
+	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	c.Run()
+}
+
+func correrAgente() {
+	srv := agente.Nuevo(agente.Config{
+		Addr:     "127.0.0.1:9101",
+		Dir:      carpetaAgente(),
+		Origenes: []string{"null", "https://raveholding.github.io"},
+		ConfirmarVinculo: func(origen string, ya bool) bool {
+			t := "Una página pidió vincular el agente de impresión de red con este equipo.\n\nOrigen: " + origen + "\n\n"
+			if ya {
+				t += "ATENCIÓN: ya hay una vinculación hecha. Si seguís, la anterior se reemplaza.\n\n"
+			}
+			t += "¿Fuiste vos, desde el Sistema RAVE, en Configuración → Periféricos?"
+			return aviso(t, mbYesNo|mbIconQuest|mbDefButton2) == idYes
+		},
+		MostrarCodigo: func(codigo string) {
+			aviso("Código para vincular las impresoras de red con el Sistema RAVE:\n\n        "+codigo+"\n\nEscribilo en el sistema (Configuración → Periféricos). Vale 3 minutos y sirve una sola vez.\nSi no fuiste vos quien lo pidió, tocá Aceptar y no lo uses.", mbOK|mbIconInfo)
+		},
+	})
+	_ = srv.Servir() // si el puerto ya está tomado, otra copia ya está corriendo: se cierra sin avisar
 }
 
 // ---------------------------------------------------------------- accesos directos
@@ -186,6 +258,28 @@ func copiarEste(dest string) error {
 	return os.Rename(tmp, dest)
 }
 
+// protegerCarpeta: en C:\ Windows suele dar escritura a "Usuarios autenticados", y con eso otra
+// persona de la PC podría cambiar el programa o los datos. Se deja acceso sólo a esta persona,
+// a los administradores y al sistema. Si algo falla antes de sacar la herencia, no se toca nada.
+func protegerCarpeta(dir string) {
+	usuario := os.Getenv("USERNAME")
+	if usuario == "" {
+		return
+	}
+	if dom := os.Getenv("USERDOMAIN"); dom != "" {
+		usuario = dom + `\` + usuario
+	}
+	correr := func(args ...string) bool {
+		c := exec.Command("icacls", args...)
+		c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+		return c.Run() == nil
+	}
+	if !correr(dir, "/grant:r", usuario+":(OI)(CI)F", "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F") {
+		return
+	}
+	correr(dir, "/inheritance:r")
+}
+
 func instalar() {
 	if aviso("Se va a instalar "+nombre+" en este equipo.\n\n"+
 		"• No hace falta ser administrador.\n"+
@@ -219,6 +313,7 @@ func instalar() {
 			return
 		}
 	}
+	protegerCarpeta(dir)
 	// restos del instalador anterior (archivos .bat y scripts)
 	for _, f := range []string{"ACTUALIZAR.bat", "DESINSTALAR.bat", "actualizar.ps1", "desinstalar.ps1", "LEEME.txt"} {
 		os.Remove(filepath.Join(dir, f))
@@ -228,6 +323,8 @@ func instalar() {
 	// accesos directos
 	ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED)
 	defer ole.CoUninitialize()
+	detenerAgente()
+	os.RemoveAll(carpetaAgente()) // copia del agente y la clave de vinculación
 	escritorio := carpetaConocida(windows.FOLDERID_Desktop)
 	programas := carpetaConocida(windows.FOLDERID_Programs)
 	menu := filepath.Join(programas, nombre)
@@ -238,6 +335,7 @@ func instalar() {
 	accesos := []struct{ ruta, args, descr string }{
 		{filepath.Join(escritorio, nombre+".lnk"), "", nombre + " · gestión del comercio"},
 		{filepath.Join(menu, nombre+".lnk"), "", nombre + " · gestión del comercio"},
+		{filepath.Join(escritorio, nombre+" (impresión directa).lnk"), "/directa", "Igual que el sistema, pero imprime sin preguntar en la impresora predeterminada de Windows"},
 		{filepath.Join(menu, "Actualizar "+nombre+".lnk"), "/actualizar", "Trae la última versión publicada"},
 		{filepath.Join(menu, "Desinstalar "+nombre+".lnk"), "/desinstalar", "Quita el sistema de este equipo"},
 	}
@@ -250,6 +348,7 @@ func instalar() {
 
 	msg := nombre + " quedó instalado.\n\n" +
 		"Para entrar: ícono \"" + nombre + "\" del Escritorio.\n" +
+		"Si querés imprimir tickets sin que aparezca la ventana de impresión: ícono \"" + nombre + " (impresión directa)\" (cerrá antes el sistema si estaba abierto).\n" +
 		"Primera vez: asistente para crear el comercio, o \"Conectar este dispositivo a la nube\".\n\n" +
 		"Soporte y sistemas a medida: " + empresa + " · " + contacto
 	if len(fallos) > 0 {
@@ -286,7 +385,12 @@ func registrar(dir, exe string) {
 
 // ---------------------------------------------------------------- actualizar
 func actualizar(dir string) {
-	cli := &http.Client{Timeout: 60 * time.Second}
+	cli := &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if req.URL.Scheme != "https" || len(via) > 5 {
+			return fmt.Errorf("redirección no permitida")
+		}
+		return nil
+	}}
 	r, err := cli.Get(urlNueva + "?v=" + fmt.Sprint(time.Now().Unix()))
 	if err != nil {
 		error_("No se pudo descargar la versión nueva.\nRevisá que haya internet y probá de nuevo.\n\n" + err.Error())
@@ -304,6 +408,11 @@ func actualizar(dir string) {
 	}
 	pag := filepath.Join(dir, "sistema-rave.html")
 	if viejo, err := os.ReadFile(pag); err == nil {
+		// no se acepta una versión MÁS VIEJA que la instalada (evita que alguien te haga retroceder)
+		if versionDe(datos) == nil || (versionDe(viejo) != nil && menorVersion(versionDe(datos), versionDe(viejo))) {
+			error_("La versión descargada no es válida o es más vieja que la instalada. No se cambió nada.")
+			return
+		}
 		if string(viejo) == string(datos) {
 			aviso("Ya tenés la última versión del sistema.", mbOK|mbIconInfo)
 			return
@@ -315,6 +424,29 @@ func actualizar(dir string) {
 		return
 	}
 	aviso("Listo: el sistema quedó actualizado.\n\nSi estaba abierto, cerralo y volvé a abrirlo.\nLos datos no se tocaron.", mbOK|mbIconInfo)
+}
+
+var reVersion = regexp.MustCompile(`APP_VERSION = '(\d+)\.(\d+)\.(\d+)'`)
+
+func versionDe(b []byte) []int {
+	m := reVersion.FindSubmatch(b)
+	if m == nil {
+		return nil
+	}
+	v := make([]int, 3)
+	for i := 0; i < 3; i++ {
+		fmt.Sscan(string(m[i+1]), &v[i])
+	}
+	return v
+}
+
+func menorVersion(a, b []int) bool {
+	for i := 0; i < 3; i++ {
+		if a[i] != b[i] {
+			return a[i] < b[i]
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------- desinstalar
@@ -330,6 +462,7 @@ func desinstalar(dir string) {
 	escritorio := carpetaConocida(windows.FOLDERID_Desktop)
 	programas := carpetaConocida(windows.FOLDERID_Programs)
 	os.Remove(filepath.Join(escritorio, nombre+".lnk"))
+	os.Remove(filepath.Join(escritorio, nombre+" (impresión directa).lnk"))
 	os.RemoveAll(filepath.Join(programas, nombre))
 	os.Remove(filepath.Join(programas, nombre+".lnk"))
 	registry.DeleteKey(registry.CURRENT_USER, claveDesins)
@@ -366,8 +499,15 @@ func main() {
 		actualizar(instalado)
 	case modo == "desinstalar":
 		desinstalar(instalado)
+	case modo == "agente":
+		correrAgente()
 	case modo == "instalar":
 		instalar()
+	case modo == "directa":
+		impresionDirecta = true
+		if err := abrirSistema(yoDir); err != nil {
+			error_(err.Error())
+		}
 	case strings.EqualFold(filepath.Clean(yoDir), filepath.Clean(instalado)):
 		if err := abrirSistema(yoDir); err != nil {
 			error_(err.Error())

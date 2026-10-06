@@ -11,7 +11,7 @@
      archivo (no hay build ni archivos .js/.css separados). Headers reales
      como HSTS o X-Frame-Options los agrega GitHub Pages en la respuesta HTTP;
      eso no se puede fijar desde un <meta>. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-src https://www.google.com; connect-src 'self' https://vrkvfshwlbxpgqtmmdeu.supabase.co https://cdn.jsdelivr.net https://script.google.com https://script.googleusercontent.com; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-src https://www.google.com; connect-src 'self' https://vrkvfshwlbxpgqtmmdeu.supabase.co https://cdn.jsdelivr.net http://127.0.0.1:9101 https://script.google.com https://script.googleusercontent.com; base-uri 'self'; form-action 'self'; object-src 'none'">
 <title>Almacén y Licorería RAVE · Menú digital y pedidos por WhatsApp · Salta</title>
 <meta name="description" content="Menú digital de Almacén y Licorería RAVE en Urquiza 1052, Salta: vinos, fernet, gin, cervezas, cigarrillos y combos. Pedí por WhatsApp con retiro o entrega a domicilio. Abierto hasta las 23:30.">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -1601,7 +1601,11 @@ body.erp-open #cart-overlay{ display:none !important; }
   border:1px solid #e8e3d9; min-height:52px; margin-bottom:10px; color:#242220; overflow:hidden; }
 #erp-kp .kp-t{ font-size:12px; color:#6b6559; margin:0 4px 6px; }
 #erp-kp .kp-g{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-#erp-kp button{ min-height:56px; border-radius:14px; border:1px solid #e8e3d9; background:#fff; font:600 20px 'Poppins',sans-serif; color:#242220; cursor:pointer; }
+#erp-kp button{ min-height:58px; padding:0 6px; display:flex; align-items:center; justify-content:center; text-align:center; line-height:1;
+  border-radius:14px; border:1px solid #e8e3d9; background:#fff; font:600 22px 'Poppins',sans-serif; color:#242220; cursor:pointer; white-space:nowrap; }
+#erp-kp .kp-x, #erp-kp .kp-ok{ font-size:15px; letter-spacing:.01em; }
+#erp-kp .kp-v.vacio{ color:#b9b2a5; font-weight:500; font-size:16px; line-height:34px; }
+#erp-kp .kp-v{ display:flex; align-items:center; justify-content:flex-end; gap:6px; }
 #erp-kp button:active{ background:#f1ece2; }
 #erp-kp .kp-ok{ background:#242220; color:#fff; border-color:#242220; }
 #erp-kp .kp-x{ color:#a33a3a; }
@@ -1781,6 +1785,11 @@ body.pantalla-cliente > *:not(#rv-cliente){ display:none !important; }
 #erp .tk-row .te{ min-width:36px; min-height:36px; border:1px solid var(--p-line); border-radius:8px; background:none; cursor:pointer; color:var(--p-ink-2, inherit); }
 @media (max-width:1024px){ #erp .pos-keys{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media (max-width:560px){ #erp .pos-keys{ grid-template-columns:repeat(3,minmax(0,1fr)); } #erp .pos-keys .fk{ font-size:11.5px; padding:0 8px; } }
+
+/* Ingreso / egreso de efectivo en el mostrador */
+#erp .pos-cajaops{ display:flex; gap:8px; margin:-6px 0 16px; flex-wrap:wrap; }
+#erp .pos-cajaops button{ min-height:48px; padding:0 16px; border:1px solid var(--p-line); border-radius:12px; background:var(--p-card, #fff); color:var(--p-ink); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
+#erp .pos-cajaops button.egr{ color:var(--p-bad); }
 
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFFklEQVR42rWXTWxc1RXHf+fc9+bDHmeIg+sQEgWrfEgGCmIRUVXIC6hUVSygbJAQgqqLSlWrbiq1m27ogmXVblBVAdkgEEWIUhRALFBVSqSKIoGAJo4Te0iEseRkYmdm/GbmvXO6eGNjOzPxYMyRjvTeve/d+7/n/O/5ELaKArb+Mj09XYHVAqvsTvZBp1NK5+bmNq8QgGz9RbZPTE5OjlbHRp4w95/g3IJTAse3fjuUCLiIdBzmgTc0aj83O7u4vBmEbD75zUeP3kukx4Pqbe6Ou7MXIiKICGa26MbP5+bn/7EOQtYfbpmaOobyLsiIWdYVEe0B2wtxd89UNRYgy/yhswsLfweCADIxPTFaTUY/VtWpLLNUhIhvR7L8YL6aRNn0+dPnFxXwajLyeAhhKsuyqzZXGU5FhiJJMPNMNVQLqf4acAG4eeqmdzXojJlZzyUbknQcc0e2r+7gfLWxqhAHIQRwy+cGiImImNvsdeeuv1O+Nzk52hwpn1aVGz1n3ZatbruxSKmgpJmzeVJ77DCDNHOabWPpcsrlRka5qASFARzOl3Ffk8jviDohlMCL/QwowE9/uJ+jEwVUhbCJkq12bplKSSnFykoro97I+Pf/mvztvRXaXSMKMggEDpGbl2X68OHxdhxOqepEPwsUYyGOhKceO8ih8Zg0czKD37+wyOKllPFK4OHvV3ng7grd1KmOBk6eavGHl5YG3ghA3L0rwe/e8Zo1E+fKWrZBSOnp+vj55S5/en2Z0xfahCAs1VOO3TrCfbeP0mzbhqsGyY4AIoUoSP9xESqlnB+ffp5QjASRnBPfvaHIMOFzRwDOQDINiDhsgBjmt11HutQgdWgkOdnuuKlE0nWKcU68D860rknCDUvuFkClpFRKyoGxwCM/qHLroSLukALPnLjIR/MJ5YJgewpAchMHhacemySoEAWhEAn1Rsab/13lxAdXuNRIKcc6lOu+ngt6/jWHv759iWdOXORSI6XdNQqxMHNnhSMTMSqCDLmy7i61wSe1hFfev8yfX18mqIDD4QMxv3l4gupIIE2HKyB2TcJSQTi4P+bDs2u891mTsRHlciPjO9WIB4+N0RoiBgwFQHoJp58VzJw4El49uUKrbcSR0GobP7pnH4cOxHRSR+UbAkh7yabfeDd1SrFy+kKbf37SpFJWkq5z/b7Ag8fGaCS24y3YEcBoSRgr5xnaPD+5+1fjIhBHwmsnV7iyZsRBaCTG/XdVmD5SIgrS14IbFr5WMhLg6ScP9s2Gax2nmxq/Pf4lS/WUta7xix8f4NH7rmN1zYhUMJyFpQ6/O/4labZRU2xJRpGZybYaZEsYfv6d+uB6wGGlmSEC5YLy8r9W+HBujczzuRByN/UtaPJCUSJvtztSLKSDTPTRfNJ3Ae8lmlJBEcl92Wwb/5ltbaB0zzNoqaD9KuXM3DrrJdn7qnKvuV9Vku3E4s0kG3RjthExL8nMF1Lzae39+ZqoivdpBMyvrdtdtuM3jqmIILxVq9USBaRV6DybZdmyqkab26ZvQUwEycy6jv4R8oitX5z64qLhT+QmlODu3V6P6Huk5u4poCFocOOX586dOwNo6H0Q6vWV2er+6sci8kAUQmXdpXuhIiIhBAUSM/vV2fnaX9Y7srDJfaFeX/ls//jIi3jo4D4OlHNWuPUs8rVVRNoIC27+kmb+szMLtbf6NadXtc4zMzPR4uL8ETPK36wpjDtpml6o1WpJv/b8/wkypQGng8zuAAAAAElFTkSuQmCC">
@@ -3601,7 +3610,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
       <button class="nav" type="button" data-go="config"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 7.4h9.2M18.6 7.4h1.8M3.6 16.6h3.8M13.4 16.6h7"/><circle cx="15.6" cy="7.4" r="2.3"/><circle cx="10" cy="16.6" r="2.3"/></svg></span><span class="tx" data-i18n="nav.config">Administración</span></button>
 
       <div class="side-foot">
-        <b>Sistema RAVE</b> v1.5.3<br>
+        <b>Sistema RAVE</b> v1.5.4<br>
 
         <span id="erp-foot-mode">Archivo único · datos locales</span><br>
         <a class="dev-link" href="https://wa.me/5493875143900?text=Hola%20Rave%20Holding!%20Quiero%20el%20Sistema%20RAVE%20para%20mi%20negocio." target="_blank" rel="noopener">Desarrollado por <b>Rave Holding</b> · Salta</a>
@@ -3642,6 +3651,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
             <button class="btn xs" type="button" data-go="caja" style="margin-left:8px">Abrir caja</button></div>
         </div>
         <div class="pos-keys" id="pos-keys" role="toolbar" aria-label="Atajos de teclado del mostrador (F1 a F12)"></div>
+        <div class="pos-cajaops" id="pos-cajaops"><button type="button" id="pos-ing">＋ Ingreso de efectivo</button><button type="button" class="egr" id="pos-egr">－ Egreso de efectivo</button></div>
         <div class="pos">
           <div class="stack">
             <div class="card">
@@ -4897,7 +4907,7 @@ var QR = (function(){
       alcH: $('#s-alc-h').value || '00:00',
       permitirSinStock: true,
       ptoVenta: '0001',
-      wifi: { ssid:'RAVE-Clientes', pass:'rave-' + Math.random().toString(36).slice(2,8), rotada:Date.now() },
+      wifi: { ssid:'RAVE-Clientes', pass:'rave-' + hex(rndBytes(4)).slice(0,6), rotada:Date.now() },
       hmac: b64(rndBytes(32)),      /* secreto para firmar los códigos de sellos */
       creado: Date.now()
     };
@@ -5086,7 +5096,7 @@ var QR = (function(){
   function migrarDB(){
     var c = S.db.cfg, d = S.db;
     if(!c.hmac) c.hmac = b64(rndBytes(32));
-    if(!c.wifi) c.wifi = { ssid:'RAVE-Clientes', pass:'rave-' + Math.random().toString(36).slice(2,8), rotada:Date.now() };
+    if(!c.wifi) c.wifi = { ssid:'RAVE-Clientes', pass:'rave-' + hex(rndBytes(4)).slice(0,6), rotada:Date.now() };
     if(!c.ptoVenta) c.ptoVenta = '0001';
     if(c.permitirSinStock == null) c.permitirSinStock = true;
     if(!c.sellos) c.sellos = 8;
@@ -5095,7 +5105,7 @@ var QR = (function(){
     seqDocs();
     if(!c.arcaDef) c.arcaDef = { admin:'sin', mostrador:'sin', operador:'sin' };
     if(!c.ticketAncho) c.ticketAncho = '80';
-    ['prod','mov','ventas','turnos','gastos','compras','proveedores','clientes','mesas','mozos','ots','tecnicos','audit','nonces','pagosCta','empleados','fichadas','liquidaciones'].forEach(function(k){
+    ['prod','mov','ventas','turnos','gastos','compras','proveedores','clientes','mesas','mozos','ots','tecnicos','audit','nonces','pagosCta','empleados','fichadas','liquidaciones','printq'].forEach(function(k){
       if(!Array.isArray(d[k])) d[k] = [];
     });
     d.audit.forEach(function(a, i){ if(!a.id) a.id = 'a' + (a.ts || 0).toString(36) + i; });
@@ -5188,6 +5198,21 @@ var QR = (function(){
       try{ data = JSON.parse(fr.result); }
       catch(e){ toast('El archivo no es un respaldo válido', 'bad'); return; }
 
+      if(!data || typeof data !== 'object' || Array.isArray(data)){ toast('El archivo no es un respaldo válido', 'bad'); return; }
+      if(data.db){
+        /* validación de forma + saneo de claves peligrosas antes de tocar nada */
+        var okDb = typeof data.db === 'object' && !Array.isArray(data.db) && data.db.cfg && typeof data.db.cfg === 'object';
+        if(!okDb){ toast('El respaldo está dañado o no tiene el formato esperado', 'bad'); return; }
+        var limpiar = function(v, n){
+          if(n > 14 || !v || typeof v !== 'object') return v;
+          if(Array.isArray(v)){ for(var i=0;i<v.length;i++) v[i] = limpiar(v[i], n + 1); return v; }
+          Object.keys(v).forEach(function(k){
+            if(k === '__proto__' || k === 'constructor' || k === 'prototype') delete v[k]; else v[k] = limpiar(v[k], n + 1);
+          });
+          return v;
+        };
+        limpiar(data.db, 0);
+      }
       if(data.tipo === 'rave-respaldo-legible' && data.db && nubeOn()){
         toast('Este equipo está conectado a la nube: los datos ya están respaldados ahí. Para restaurar un archivo, primero desconectá el equipo.', 'bad');
         return;
@@ -5550,7 +5575,7 @@ var QR = (function(){
       title:'Abrir caja', sub:'Contá el efectivo con el que arranca el turno',
       slim:true,
       body:'<div class="f"><label for="f-ini">Efectivo inicial</label>' +
-           '<input class="inp big" id="f-ini" type="number" inputmode="decimal" min="0" step="100" value="0">' +
+           '<input class="inp big" id="f-ini" type="number" inputmode="decimal" min="0" step="100" value="" placeholder="0">' +
            '<span class="help">Es la plata que hay físicamente en la caja ahora mismo.</span></div>',
       buttons:[
         { t:'Cancelar', cls:'ghost' },
@@ -5568,7 +5593,7 @@ var QR = (function(){
     modal({
       title: tipo === 'ingreso' ? 'Ingreso de efectivo' : 'Egreso de efectivo',
       slim:true,
-      body:'<div class="f"><label for="f-mm">Monto</label><input class="inp big" id="f-mm" type="number" inputmode="decimal" min="0" step="100" value="0"></div>' +
+      body:'<div class="f"><label for="f-mm">Monto</label><input class="inp big" id="f-mm" type="number" inputmode="decimal" min="0" step="100" value="" placeholder="0"></div>' +
            '<div class="f" style="margin-top:12px"><label for="f-md">Detalle</label>' +
            '<input class="inp" id="f-md" type="text" maxlength="60" placeholder="' + (tipo === 'ingreso' ? 'Aporte del dueño, cobro de deuda...' : 'Pago a proveedor, cambio, retiro...') + '"></div>',
       buttons:[
@@ -5890,7 +5915,7 @@ var QR = (function(){
             Object.keys(PAGO_NOM).map(function(k){ return '<option value="' + k + '">' + esc(PAGO_NOM[k]) + '</option>'; }).join('') +
           '</select></div>' +
           '<div class="f"><label for="f-desc">Descuento</label>' +
-            '<input class="inp" id="f-desc" type="number" inputmode="decimal" min="0" step="100" value="0">' +
+            '<input class="inp" id="f-desc" type="number" inputmode="decimal" min="0" step="100" value="" placeholder="0">' +
             '<span class="help">En pesos, sobre el total.</span></div>' +
           '<div class="f"><label for="f-cli">Cliente <span class="help">(sellos, fiado y cumpleaños)</span></label>' +
             '<select class="inp" id="f-cli"><option value="">Sin identificar</option>' +
@@ -6586,7 +6611,7 @@ var QR = (function(){
     modal({
       title:'Reintegro / reembolso', slim:true,
       sub:'Sale efectivo de la caja y queda en la auditoría',
-      body:'<div class="f"><label for="rb-m">Monto a devolver</label><input class="inp big" id="rb-m" type="number" inputmode="decimal" min="0" step="100" value="0"></div>' +
+      body:'<div class="f"><label for="rb-m">Monto a devolver</label><input class="inp big" id="rb-m" type="number" inputmode="decimal" min="0" step="100" value="" placeholder="0"></div>' +
         '<div class="f" style="margin-top:12px"><label for="rb-d">Motivo <span class="help">(obligatorio)</span></label>' +
         '<input class="inp" id="rb-d" type="text" maxlength="60" placeholder="Ej.: devolución de producto, venta #123"></div>',
       buttons:[
@@ -6680,11 +6705,24 @@ var QR = (function(){
     return true;
   }
 
+  /* Ingreso / egreso de efectivo desde el mostrador (usa el mismo registro de la caja) */
+  function posMovCaja(tipo){
+    if(!turnoAbierto()){ toast('Abrí la caja para registrar ingresos y egresos', 'bad'); return; }
+    movManual(tipo);
+  }
+  D.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('#pos-ing, #pos-egr');
+    if(b) posMovCaja(b.id === 'pos-ing' ? 'ingreso' : 'egreso');
+  });
+
   /* =======================================================================
      16. CSV (importar / exportar sin librerías)
      ======================================================================= */
   function csvCell(v){
+    var esTexto = typeof v === 'string';
     v = String(v == null ? '' : v);
+    /* un texto que empiece con = + @ o - (y no sea un número) se leería como fórmula en Excel: se le antepone ' */
+    if(esTexto && (/^[=+@\t\r]/.test(v) || /^-[^\d.,\s]/.test(v))) v = "'" + v;
     return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
   function toCSV(rows){
@@ -7931,7 +7969,7 @@ var QR = (function(){
       ask('Cambiar la clave del Wi-Fi',
           'Se genera una clave nueva. Acordate de cargarla en el router y de volver a grabar el tag NFC, si usás uno.',
           function(){
-            S.db.cfg.wifi.pass = 'rave-' + Math.random().toString(36).slice(2, 8) + Math.floor(Math.random()*90+10);
+            S.db.cfg.wifi.pass = 'rave-' + hex(rndBytes(5)).slice(0, 8);
             S.db.cfg.wifi.rotada = Date.now();
             audit('wifi.rotada', 'clave de invitados renovada');
             refresh();
@@ -7982,7 +8020,7 @@ var QR = (function(){
         '<button class="btn gold" type="button" id="k-save" style="margin-top:16px">Guardar cambios</button>' +
       '</div>' +
 
-      nbCard() + recCard() + proCards() + perifCard() +
+      nbCard() + recCard() + proCards() + perifCard() + arcaCard() +
 
       /* --- usuarios --- */
       (nubeOn() ? nbCardUsuarios() : '<div class="card b6"><div class="c-head"><span class="c-ttl">Usuarios y roles</span>' +
@@ -8094,6 +8132,7 @@ var QR = (function(){
     wireRec();
     wireProCards();
     wirePerif();
+    wireArca();
     var ua = $('#k-user-add');
     if(ua) ua.addEventListener('click', nuevoUsuario);
     var kp = $('#k-pass');
@@ -9393,7 +9432,7 @@ var QR = (function(){
      add: se escribe una vez y no cambia más. */
   var NB_COLS = {
     prod:'del', mov:'add', ventas:'mod', turnos:'mod', gastos:'del', compras:'del', proveedores:'del', clientes:'del', pagosCta:'mod',
-    mesas:'del', mozos:'del', ots:'del', tecnicos:'del', empleados:'del', fichadas:'mod', audit:'add', liquidaciones:'mod'
+    mesas:'del', mozos:'del', ots:'del', tecnicos:'del', empleados:'del', fichadas:'mod', audit:'add', liquidaciones:'mod', printq:'del'
   };
   var NB_ORDEN = { liquidaciones:'ts', mov:'ts', ventas:'ts', fichadas:'ts', audit:'ts', pagosCta:'ts', gastos:'ts', turnos:'abierto' };
 
@@ -9499,7 +9538,26 @@ var QR = (function(){
   function nbRpc(conn, fn, args){ return nbReq(conn, '/rest/v1/rpc/' + fn, { method:'POST', body:args || {} }); }
 
   /* ---------- huella de cada registro (para saber qué cambió) ---------- */
+  /* secretos que NUNCA viajan a la nube: certificados y claves ARCA. (cfg.hmac sí viaja: lo necesitan todos los equipos para validar sellos y tarjetas NFC; riesgo residual documentado) */
+  var NB_SECRETOS = ['arcaCert'];
+  function nbCfgPub(c){
+    var o = {};
+    Object.keys(c || {}).forEach(function(k){ if(NB_SECRETOS.indexOf(k) < 0) o[k] = c[k]; });
+    return o;
+  }
+  /* saca claves peligrosas (__proto__, constructor, prototype) de datos que vienen de afuera */
+  function nbLimpiar(v, n){
+    n = n || 0;
+    if(n > 12 || !v || typeof v !== 'object') return v;
+    if(Array.isArray(v)){ for(var i=0;i<v.length;i++) v[i] = nbLimpiar(v[i], n + 1); return v; }
+    Object.keys(v).forEach(function(k){
+      if(k === '__proto__' || k === 'constructor' || k === 'prototype') delete v[k];
+      else v[k] = nbLimpiar(v[k], n + 1);
+    });
+    return v;
+  }
   function nbHash(col, o){
+    if(col === 'cfg') o = nbCfgPub(o);
     var s = JSON.stringify(o, function(k, v){
       if(this === o && ((col === 'prod' && k === 'stock') || k === '_h')) return undefined;
       return v;
@@ -9546,7 +9604,7 @@ var QR = (function(){
       }
     });
     var hc = nbHash('cfg', db.cfg);
-    if(h['cfg/main'] !== hc) out.push({ c:'cfg', id:'main', d:db.cfg, k:'cfg/main', hs:hc });
+    if(h['cfg/main'] !== hc) out.push({ c:'cfg', id:'main', d:nbCfgPub(db.cfg), k:'cfg/main', hs:hc });
     Object.keys(h).forEach(function(k){
       if(vistos[k] || k === 'cfg/main') return;
       var col = k.slice(0, k.indexOf('/'));
@@ -9631,12 +9689,14 @@ var QR = (function(){
     return -1;
   }
   function nbAplicar(r, pend, ch){
-    var col = r.coleccion, id = String(r.id), k = col + '/' + id, h = nbEstadoLocal().h, d = r.datos || {}, hs;
+    var col = r.coleccion, id = String(r.id), k = col + '/' + id, h = nbEstadoLocal().h, d = nbLimpiar(r.datos || {}), hs;
+    if(typeof d !== 'object' || Array.isArray(d)) return;
     if(col === 'cfg'){
       if(r.borrado) return;
       hs = nbHash('cfg', d);
       if(h[k] === hs) return;
       if(h[k] !== undefined && nbHash('cfg', S.db.cfg) !== h[k]) return;   /* cambio local sin subir: gana el local */
+      NB_SECRETOS.forEach(function(sk){ delete d[sk]; if(S.db.cfg && S.db.cfg[sk] !== undefined) d[sk] = S.db.cfg[sk]; });
       S.db.cfg = d; h[k] = hs; ch.any = ch.cfg = true;
       return;
     }
@@ -10606,6 +10666,8 @@ var QR = (function(){
         var b = e.target.closest('[data-k]');
         if(!b || !KP._o) return;
         var k = b.getAttribute('data-k'), o = KP._o, v = KP._v;
+        /* si abrió con un número cargado, el primer dígito lo reemplaza (no hay que borrar antes) */
+        if(KP._fresh && k !== 'OK' && k !== 'X'){ KP._fresh = false; if(/^[0-9]$/.test(k) || k === ',' || k === 'C') v = ''; }
         if(k === 'OK'){ cerrarTeclado(true); return; }
         if(k === 'X'){ cerrarTeclado(false); return; }
         if(k === 'C') v = '';
@@ -10618,6 +10680,7 @@ var QR = (function(){
       });
     }
     KP._o = o;
+    KP._fresh = o.valor != null && o.valor !== '' && String(o.valor) !== '0';
     KP._v = o.valor != null && o.valor !== '' && String(o.valor) !== '0' ? String(o.valor).replace('.', ',') : '';
     $('.kp-t', KP).textContent = o.titulo || '';
     KP.querySelector('[data-k=","]').disabled = !o.decimales;
@@ -10626,7 +10689,10 @@ var QR = (function(){
   }
   function pintarTeclado(){
     var o = KP._o;
-    $('.kp-v', KP).textContent = o.pin ? KP._v.replace(/./g, '•') : (KP._v || '0') + (o.sufijo ? ' ' + o.sufijo : '');
+    var vv = $('.kp-v', KP);
+    vv.classList.toggle('vacio', !KP._v);
+    vv.textContent = !KP._v ? (o.pin ? 'Ingresá el PIN' : 'Escribí el número' + (o.sufijo ? ' (' + o.sufijo + ')' : ''))
+      : (o.pin ? KP._v.replace(/./g, '•') : KP._v + (o.sufijo ? ' ' + o.sufijo : ''));
   }
   function cerrarTeclado(ok){
     if(!KP || !KP._o) return;
@@ -10640,6 +10706,19 @@ var QR = (function(){
     if(ok && o.onOk) o.onOk(o.pin ? v : toNum(v));
     if(!ok && o.onCancel) o.onCancel();
   }
+  /* Campos numéricos: al entrar queda todo seleccionado, así lo que se escribe
+     reemplaza el 0 (o el número que hubiera) sin tener que borrar antes. */
+  var SELNUM = null;
+  D.addEventListener('focusin', function(e){
+    var el = e.target;
+    if(!el || el.tagName !== 'INPUT' || !el.closest || !el.closest('#erp') || el.disabled || el.readOnly) return;
+    var im = el.getAttribute('inputmode');
+    if(!(el.type === 'number' || im === 'numeric' || im === 'decimal')) return;
+    SELNUM = el;
+    setTimeout(function(){ try{ el.select(); }catch(x){} }, 0);
+  });
+  D.addEventListener('mouseup', function(e){ if(SELNUM && e.target === SELNUM){ e.preventDefault(); SELNUM = null; } }, true);
+
   /* en modo táctil, todo campo numérico abre el teclado en pantalla */
   D.addEventListener('focusin', function(e){
     var el = e.target;
@@ -10747,8 +10826,23 @@ var QR = (function(){
   }
 
   /* --- PIN de supervisor (para salir del kiosco y acciones sensibles) --- */
+  /* PBKDF2-SHA256 con sal propia: forzar un PIN de 4 a 8 números a ciegas cuesta tiempo real.
+     Los PIN guardados con el formato viejo (sha256) siguen funcionando y se pasan al nuevo al usarse. */
+  function pinDerivar(pin, saltB64){
+    return SUB.importKey('raw', ENC.encode(String(pin)), 'PBKDF2', false, ['deriveBits'])
+      .then(function(k){ return SUB.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt:unb64(saltB64), iterations:150000 }, k, 256); })
+      .then(function(bits){ return b64(bits); });
+  }
   function hashPin(pin){
-    return sha256hex('rave-pin|' + (S.db.cfg.hmac || '') + '|' + pin);
+    var salt = b64(rndBytes(16));
+    return pinDerivar(pin, salt).then(function(h){ return 'p2$' + salt + '$' + h; });
+  }
+  function pinCoincide(pin, guardado){
+    if(typeof guardado === 'string' && guardado.indexOf('p2$') === 0){
+      var p = guardado.split('$');
+      return p.length === 3 ? pinDerivar(pin, p[1]).then(function(h){ return h === p[2]; }) : Promise.resolve(false);
+    }
+    return sha256hex('rave-pin|' + (S.db.cfg.hmac || '') + '|' + pin).then(function(h){ return h === guardado; });
   }
   function pinModal(){
     if(S.rol !== 'admin'){ toast('El PIN lo define un administrador', 'bad'); return; }
@@ -10771,8 +10865,12 @@ var QR = (function(){
     if(S.rol === 'admin' || !S.db.cfg.pinSup){ ok(); return; }
     if(Date.now() < PIN_BLOQ){ toast('Demasiados intentos. Probá de nuevo en ' + Math.ceil((PIN_BLOQ - Date.now()) / 1000) + ' s, o que entre un administrador.', 'bad'); return; }
     teclado({ titulo:titulo, pin:true, max:8, onOk:function(p){
-      hashPin(p).then(function(h){
-        if(h === S.db.cfg.pinSup){ PIN_FALLOS = 0; ok(); return; }
+      pinCoincide(p, S.db.cfg.pinSup).then(function(bien){
+        if(bien){
+          PIN_FALLOS = 0;
+          if(String(S.db.cfg.pinSup).indexOf('p2$') !== 0 && S.rol === 'admin') hashPin(p).then(function(n){ S.db.cfg.pinSup = n; save(); });
+          ok(); return;
+        }
         PIN_FALLOS++;
         audit('kiosco.pin_incorrecto', (S.user || '') + ' · intento ' + PIN_FALLOS);
         if(PIN_FALLOS >= 5){ PIN_FALLOS = 0; PIN_BLOQ = Date.now() + 120000; toast('PIN incorrecto 5 veces: bloqueado 2 minutos', 'bad'); }
@@ -10879,7 +10977,7 @@ var QR = (function(){
       '<div class="pc-foot"><span>Precios con impuestos incluidos · Ley 24.240</span><span>Sistema RAVE · Rave Holding</span></div></div>';
     D.body.appendChild(w);
     window.addEventListener('message', function(e){
-      if(e.source !== window.opener || !e.data || e.data.rave !== 'cliente') return;
+      if(e.source !== window.opener || e.origin !== location.origin || !e.data || e.data.rave !== 'cliente') return;
       var d = e.data;
       $('#pc-n').textContent = String(d.comercio || '');
       $('#pc-tot').textContent = String(d.total || '$ 0');
@@ -10946,7 +11044,8 @@ var QR = (function(){
     if(cp === 'ascii') s = sinAcentos(s).replace(/[¿¡]/g, '');
     for(var i=0;i<s.length;i++){
       var ch = s[i], c = s.charCodeAt(i);
-      if(c < 128) out.push(c);
+      if(c < 32 || c === 127) out.push(0x20);              /* sin caracteres de control: un nombre no puede mandar comandos a la impresora */
+      else if(c < 128) out.push(c);
       else if(cp !== 'ascii' && CP850[ch] != null) out.push(CP850[ch]);
       else out.push(sinAcentos(ch).charCodeAt(0) < 128 ? sinAcentos(ch).charCodeAt(0) : 0x3F);
     }
@@ -11028,7 +11127,7 @@ var QR = (function(){
   function conectar(dev, pedirPermiso){
     var dr = DM.drivers[dev.conexion];
     if(!dr || !dr.disponible()) return Promise.reject(new Error('Este navegador no permite esa conexión'));
-    var p = pedirPermiso ? dr.pedir() : dr.buscar(dev);
+    var p = pedirPermiso ? dr.pedir(dev) : dr.buscar(dev);
     return p.then(function(x){
       if(!x) throw new Error('No encontré el dispositivo: tocá "Conectar" y elegilo de la lista');
       return dr.abrir(x, dev);
@@ -11054,6 +11153,7 @@ var QR = (function(){
   function imprimirEnDispositivo(clase, L, o){
     o = o || {};
     var dev = impresoraPara(o.sector);
+    if(!dev && typeof enviarACola === 'function' && enviarACola(L, o)) return true;   /* impresora Wi-Fi del mostrador, desde celular/tablet */
     if(!dev) return false;                        /* sin impresora térmica: imprime el navegador */
     if(DM.impresos[o.id]) return true;            /* ya salió: no se duplica */
     DM.cola.push({ id:o.id || uid(), dev:dev, bytes:escposDocumento(L, dev), intentos:0 });
@@ -11066,8 +11166,9 @@ var QR = (function(){
     var job = DM.cola[0];
     var c = DM.conn[job.dev.id];
     var listo = c && DM.drivers[job.dev.conexion].vivo(c) ? Promise.resolve(c) : conectar(job.dev, false);
-    listo.then(function(c2){ return DM.drivers[job.dev.conexion].escribir(c2, job.bytes); }).then(function(){
+    listo.then(function(c2){ return DM.drivers[job.dev.conexion].escribir(c2, job.bytes, job); }).then(function(){
       DM.impresos[job.id] = true;
+      if(job.alTerminar){ try{ job.alTerminar(); }catch(e){} }
       DM.cola.shift();
       DM.procesando = false;
       procesarCola();
@@ -11185,7 +11286,9 @@ var QR = (function(){
   function perifCard(){
     var cap = capacidades(), ds = misPerifericos();
     return '<div class="card b6"><div class="c-head"><span class="c-ttl">Periféricos de este equipo</span>' +
-        '<span class="acts"><button class="btn xs" type="button" id="dv-add">+ Conectar</button></span></div>' +
+        '<span class="acts"><button class="btn xs gold" type="button" id="dv-auto">Conectar y reconocer (automático)</button>' +
+          '<button class="btn xs" type="button" id="dv-win">Impresora de Windows (1 clic)</button>' +
+          '<button class="btn xs ghost" type="button" id="dv-add">Manual</button></span></div>' +
         (ds.length ? '<div class="rowlist">' + ds.map(function(d){
             var st = estadoDev(d);
             return '<div class="r dev-r"><span class="nm"><span class="dot ' + st + '"></span><b>' + esc(d.modelo || TIPO_DEV[d.tipo]) + '</b>' +
@@ -11202,6 +11305,7 @@ var QR = (function(){
           (cap.nfc ? '✓ NFC' : '✗ NFC') + ' · ✓ impresoras de Windows' +
           (cap.ios ? '<br>En iPhone/iPad se imprime por la impresora del sistema (AirPrint) o por red con el agente local.' : '') +
           '</div>' +
+        (typeof redInfoHTML === 'function' ? redInfoHTML() : '') +
         '<div class="divider"></div>' +
         '<div class="c-ttl" style="margin-bottom:8px">Etiquetas de balanza (EAN-13)</div>' +
         '<div class="grid-f">' +
@@ -11218,8 +11322,11 @@ var QR = (function(){
       '</div>';
   }
   function wirePerif(){
+    if(typeof redWire === 'function') redWire();
     var b = $('#dv-add');
     if(b) b.addEventListener('click', asistenteDispositivo);
+    if((b = $('#dv-auto'))) b.addEventListener('click', perifConectarAuto);
+    if((b = $('#dv-win'))) b.addEventListener('click', perifImpresoraWindows);
     if((b = $('#bz-save'))) b.addEventListener('click', function(){
       S.db.cfg.balanza = { prefijo:digits($('#bz-pref').value, 2) || '2', modo:$('#bz-modo').value, pluDig:+$('#bz-plu').value };
       audit('balanza.formato', JSON.stringify(S.db.cfg.balanza)); refresh(); toast('Formato de etiqueta guardado', 'ok');
@@ -11240,6 +11347,78 @@ var QR = (function(){
       });
     }); });
   }
+  /* --- Conexión automática: se enchufa, se elige UNA vez en la lista del navegador y queda --- */
+  var VENDORES_IMPRESORA = {      /* [VERIFICAR] contra la lista oficial de USB-IF si hace falta */
+    0x04B8:'Epson', 0x0519:'Star Micronics', 0x1504:'Bixolon', 0x1D90:'Citizen', 0x0A5F:'Zebra', 0x04F9:'Brother', 0x0DD4:'Custom'
+  };
+  function perifRegistrar(dev, conexionAbierta){
+    var ya = misPerifericos().filter(function(d){
+      return d.conexion === dev.conexion && (dev.conexion === 'navegador' ? d.tipo === dev.tipo : (d.usbVendorId === dev.usbVendorId && d.usbProductId === dev.usbProductId));
+    })[0];
+    if(ya){ if(conexionAbierta) DM.conn[ya.id] = conexionAbierta; return ya; }
+    if(conexionAbierta) DM.conn[dev.id] = conexionAbierta;
+    perifericos().push(dev);
+    audit('periferico.alta', TIPO_DEV[dev.tipo] + ' · ' + (dev.modelo || 'genérico') + ' · ' + dev.conexion + ' (automático)');
+    return dev;
+  }
+  function perifBase(extra){
+    var d = { id:'dv-' + uid(), equipo:equipoId(), tipo:'impresora', modelo:'', conexion:'navegador', ancho:'80', sector:'caja',
+              baud:'9600', codepage:'cp850', cajon:false, alta:Date.now() };
+    Object.keys(extra || {}).forEach(function(k){ d[k] = extra[k]; });
+    return d;
+  }
+  function perifImpresoraWindows(){
+    var d = perifRegistrar(perifBase({ modelo:'Impresora de Windows (predeterminada)' }), null);
+    S.db.cfg.ticketAncho = d.ancho;
+    refresh(); toast('Listo: imprime en la impresora predeterminada de Windows', 'ok');
+    probarDispositivo(d);
+  }
+  function perifConectarAuto(){
+    var cap = capacidades();
+    if(!cap.usb && !cap.serial){
+      toast('Este navegador no permite conectar USB directo: usamos la impresora de Windows', 'bad');
+      perifImpresoraWindows(); return;
+    }
+    var fallo = function(e){
+      var m = e && e.name === 'NotFoundError' ? 'No elegiste ningún dispositivo' : (e && e.message ? e.message : 'No se pudo conectar');
+      ask('No se pudo conectar por USB directo', m + '. Si la impresora ya imprime desde Windows, usá "Impresora de Windows (1 clic)": no necesita nada más.', function(){ perifImpresoraWindows(); });
+    };
+    if(cap.usb){
+      var filtros = [{ classCode:7 }].concat(Object.keys(VENDORES_IMPRESORA).map(function(v){ return { vendorId:+v }; }));
+      navigator.usb.requestDevice({ filters:filtros }).then(function(u){
+        var nombre = clean(((u.manufacturerName || VENDORES_IMPRESORA[u.vendorId] || '') + ' ' + (u.productName || '')).trim(), 40) || 'Impresora USB';
+        var dev = perifBase({ modelo:nombre, conexion:'usb', usbVendorId:u.vendorId, usbProductId:u.productId });
+        return DM.drivers.usb.abrir(u, dev).then(function(c){
+          var reg = perifRegistrar(dev, c);
+          refresh(); toast('Reconocida: ' + reg.modelo, 'ok');
+          probarDispositivo(reg);
+        });
+      }).catch(fallo);
+    } else {
+      navigator.serial.requestPort({}).then(function(port){
+        var info = port.getInfo ? port.getInfo() : {};
+        var dev = perifBase({ modelo:(VENDORES_IMPRESORA[info.usbVendorId] || 'Dispositivo') + ' USB-Serie', conexion:'serial',
+                              usbVendorId:info.usbVendorId, usbProductId:info.usbProductId });
+        return DM.drivers.serial.abrir(port, dev).then(function(c){
+          var reg = perifRegistrar(dev, c); refresh(); toast('Conectado: ' + reg.modelo, 'ok'); probarDispositivo(reg);
+        });
+      }).catch(fallo);
+    }
+  }
+  /* al enchufar o arrancar, lo ya autorizado se vuelve a conectar solo */
+  function perifReconectar(){
+    if(!S.db) return;
+    misPerifericos().forEach(function(d){
+      if(d.conexion === 'navegador' || estadoDev(d) === 'on') return;
+      conectar(d, false).then(function(){ if(S.sec === 'config') R.config(); }, function(){});
+    });
+  }
+  try{
+    if(navigator.usb) navigator.usb.addEventListener('connect', function(){ setTimeout(perifReconectar, 600); });
+    if(navigator.serial) navigator.serial.addEventListener('connect', function(){ setTimeout(perifReconectar, 600); });
+  }catch(e){}
+  setTimeout(perifReconectar, 4000);
+
   function probarDispositivo(d){
     if(!d) return;
     if(d.tipo === 'impresora'){
@@ -11270,7 +11449,8 @@ var QR = (function(){
     var con = [
       ['navegador', 'Impresora instalada en Windows / del sistema', true],
       ['serial', DM.drivers.serial.nombre, cap.serial],
-      ['usb', DM.drivers.usb.nombre, cap.usb]
+      ['usb', DM.drivers.usb.nombre, cap.usb],
+      ['red', DM.drivers.red.nombre, true]
     ];
     modal({
       title:'Conectar un periférico', sub:'Asistente en 5 pasos: tipo, conexión, detección, prueba y ubicación', wide:true,
@@ -11287,8 +11467,11 @@ var QR = (function(){
           '<div class="f"><label for="dv-sector">Ubicación</label><select class="inp" id="dv-sector"><option value="caja">Caja</option><option value="cocina">Cocina</option><option value="barra">Barra</option></select></div>' +
           '<div class="f"><label for="dv-baud">Velocidad (sólo USB-Serie)</label><select class="inp" id="dv-baud">' +
             ['9600','19200','38400','115200'].map(function(v){ return '<option>' + v + '</option>'; }).join('') + '</select></div>' +
+          '<div class="f"><label for="dv-ip">Dirección IP (sólo impresora de red / Wi-Fi)</label><input class="inp" id="dv-ip" type="text" inputmode="decimal" maxlength="15" placeholder="192.168.1.50" autocomplete="off">' +
+            '<span class="help"><button class="btn xs" type="button" id="dv-scan">Buscar impresoras en mi red</button> <span id="dv-scan-res"></span></span></div>' +
           '<div class="f"><label for="dv-cp">Acentos</label><select class="inp" id="dv-cp"><option value="cp850">Con acentos (PC850)</option><option value="ascii">Sin acentos (más compatible)</option></select></div>' +
         '</div>' +
+        '<label class="chk" style="margin-top:12px"><input type="checkbox" id="dv-share" checked> <span>Impresora de red: dejar que los celulares y tablets del comercio impriman acá (por la nube)</span></label>' +
         '<label class="chk" style="margin-top:12px"><input type="checkbox" id="dv-cajon"> <span>Tiene cajón de dinero conectado a la impresora (se abre al cobrar en efectivo)</span></label>' +
         '<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><div>Si la impresora ya imprime desde Windows, elegí ' +
           '<b>"Impresora instalada en Windows"</b> y en la ventana de impresión elegila como predeterminada. Las impresoras de red (TCP 9100) ' +
@@ -11302,6 +11485,7 @@ var QR = (function(){
               baud:$('#dv-baud', box).value, codepage:$('#dv-cp', box).value, cajon:$('#dv-cajon', box).checked, alta:Date.now()
             };
             if(dev.tipo === 'impresora' && dev.conexion === 'navegador') S.db.cfg.ticketAncho = dev.ancho;
+            if(dev.conexion === 'red'){ redAltaDesdeAsistente(dev, box); return false; }
             var p = dev.conexion === 'navegador' ? Promise.resolve() : conectar(dev, true);
             p.then(function(){
               perifericos().push(dev);
@@ -11317,6 +11501,7 @@ var QR = (function(){
   /* estado de conexión: si una impresora se desconecta, avisa una vez */
   setInterval(function(){
     if(!S.db) return;
+    perifReconectar();
     misPerifericos().forEach(function(d){
       var st = estadoDev(d);
       if(DM.st && DM.st[d.id] === 'on' && st !== 'on') toast('Se desconectó: ' + (d.modelo || TIPO_DEV[d.tipo]), 'bad');
@@ -14382,7 +14567,7 @@ var QR = (function(){
       gErr('g-ayuda-err', (e.red ? 'No hay conexión a internet.' : (/n[uú]mero|muchos|recibimos|contactarte/i.test(e.message) ? e.message : 'No se pudo enviar el pedido.')) + ' Escribinos por WhatsApp o correo con los botones de abajo.');
     });
   }
-  var APP_VERSION = '1.5.3';
+  var APP_VERSION = '1.5.4';
 
   function wireRecuperacion(){
     $('#g-recup-open').addEventListener('click', abrirRecuperar);
@@ -14497,7 +14682,7 @@ var QR = (function(){
   function ixCel(v){
     if(typeof v === 'number') return v;
     v = String(v == null ? '' : v);
-    return /^[=+@]/.test(v) || /^-[^\d]/.test(v) ? "'" + v : v;
+    return /^[=+@\t\r]/.test(v) || /^-[^\d]/.test(v) ? "'" + v : v;
   }
   function ixTxt(v, max){
     v = clean(v, max || 120);
@@ -15542,15 +15727,15 @@ var QR = (function(){
         if(l.sueldos.length){
           h += l.sueldos.map(function(s, i){
             return '<div class="f"><label for="lq-s' + i + '">Sueldo de ' + esc(s.nom) + ' <span class="tiny muted">(' + esc(lqHoras(s.horas)) + ' × ' + money(s.rate) + ')</span></label>' +
-                   '<input class="inp" id="lq-s' + i + '" type="number" inputmode="decimal" min="0" step="100" value="' + s.monto + '"></div>';
+                   '<input class="inp" id="lq-s' + i + '" type="number" inputmode="decimal" min="0" step="100" value="' + esc(s.monto) + '"></div>';
           }).join('');
         }
         h += '<div class="f"><label for="lq-g">Gastos del día <span class="tiny muted">(merienda, etc.)</span></label>' +
-             '<input class="inp" id="lq-g" type="number" inputmode="decimal" min="0" step="100" value="' + (l.gastos.monto || 0) + '"></div>' +
+             '<input class="inp" id="lq-g" type="number" inputmode="decimal" min="0" step="100" value="' + esc(l.gastos.monto || 0) + '"></div>' +
              '<div class="f"><label for="lq-gd">Detalle de los gastos</label><input class="inp" id="lq-gd" type="text" maxlength="60" value="' + esc(l.gastos.det || '') + '"></div>';
         h += soc().map(function(a){
           return '<div class="f"><label for="lq-i-' + a.id + '">Impuestos de ' + esc(a.dueno || a.nom) + ' <span class="tiny muted">(se aparta del día)</span></label>' +
-                 '<input class="inp" id="lq-i-' + a.id + '" type="number" inputmode="decimal" min="0" step="100" value="' + ((l.impuestos || {})[a.id] || 0) + '"></div>';
+                 '<input class="inp" id="lq-i-' + a.id + '" type="number" inputmode="decimal" min="0" step="100" value="' + esc((l.impuestos || {})[a.id] || 0) + '"></div>';
         }).join('');
       }
       h += '<div class="f"><label for="lq-nota">Nota</label><input class="inp" id="lq-nota" type="text" maxlength="120" value="' + esc(l.nota || '') + '"></div>';
@@ -15788,6 +15973,471 @@ var QR = (function(){
       } }]
     });
   }
+  /* =======================================================================
+     15b. ARCA: certificado digital para facturación electrónica (CAE)
+     ---------------------------------------------------------------------
+     Paso a paso dentro del sistema: genera la clave privada y la solicitud
+     (CSR) en este equipo, guía el trámite en ARCA y carga el certificado que
+     ARCA devuelve. La clave privada NUNCA sale del equipo salvo la copia que
+     el administrador baja a mano. El pedido automático del CAE (WSAA + WSFE)
+     necesita un módulo de servidor y todavía NO está activo: mientras tanto,
+     el CAE se carga a mano en cada comprobante, como siempre.
+     Nombres de menús y direcciones de ARCA: [VERIFICAR en arca.gob.ar].
+     ======================================================================= */
+  var ARCA_AMB = { homo:'Homologación (pruebas)', prod:'Producción (real)' };
+
+  function arcaLen(n){ if(n < 128) return [n]; var b = []; while(n > 0){ b.unshift(n & 255); n = Math.floor(n / 256); } return [0x80 | b.length].concat(b); }
+  function arcaTlv(tag, c){ return [tag].concat(arcaLen(c.length), c); }
+  function arcaCat(){ return [].concat.apply([], arguments); }
+  function arcaTxtBytes(s){ return Array.prototype.slice.call(new TextEncoder().encode(s)); }
+  function arcaRdn(oid, tag, val){ return arcaTlv(0x31, arcaTlv(0x30, arcaCat(arcaTlv(0x06, oid), arcaTlv(tag, arcaTxtBytes(val))))); }
+  function arcaB64(u8){
+    var s = '', i;
+    for(i = 0; i < u8.length; i += 4096) s += String.fromCharCode.apply(null, u8.subarray(i, i + 4096));
+    return btoa(s);
+  }
+  function arcaPem(tipo, u8){
+    return '-----BEGIN ' + tipo + '-----\n' + (arcaB64(u8).match(/.{1,64}/g) || []).join('\n') + '\n-----END ' + tipo + '-----\n';
+  }
+  function arcaDePem(txt){
+    var m = /-----BEGIN [A-Z ]+-----([\s\S]+?)-----END [A-Z ]+-----/.exec(String(txt));
+    if(!m) return null;
+    try{ var bin = atob(m[1].replace(/\s+/g, '')); var u = new Uint8Array(bin.length); for(var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }catch(e){ return null; }
+  }
+  function arcaDatos(amb){ var c = S.db.cfg.arcaCert; return c && c[amb] ? c[amb] : null; }
+
+  /* --- solicitud de certificado: clave RSA 2048 + CSR PKCS#10 firmado con SHA-256 --- */
+  function arcaGenerarCSR(amb, cuit, razon, alias){
+    return crypto.subtle.generateKey({ name:'RSASSA-PKCS1-v1_5', modulusLength:2048, publicExponent:new Uint8Array([1, 0, 1]), hash:'SHA-256' }, true, ['sign', 'verify'])
+    .then(function(kp){
+      return Promise.all([crypto.subtle.exportKey('spki', kp.publicKey), crypto.subtle.exportKey('pkcs8', kp.privateKey)]).then(function(ex){
+        var spki = Array.prototype.slice.call(new Uint8Array(ex[0]));
+        var subject = arcaTlv(0x30, arcaCat(
+          arcaRdn([0x55, 4, 6], 0x13, 'AR'),
+          arcaRdn([0x55, 4, 10], 0x0C, razon),
+          arcaRdn([0x55, 4, 3], 0x0C, alias),
+          arcaRdn([0x55, 4, 5], 0x13, 'CUIT ' + cuit)));
+        var info = arcaTlv(0x30, arcaCat(arcaTlv(0x02, [0]), subject, spki, [0xA0, 0x00]));
+        return crypto.subtle.sign('RSASSA-PKCS1-v1_5', kp.privateKey, new Uint8Array(info)).then(function(sig){
+          var alg = arcaTlv(0x30, arcaCat(arcaTlv(0x06, [0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x0B]), [0x05, 0x00]));
+          var csr = arcaTlv(0x30, arcaCat(info, alg, arcaTlv(0x03, [0].concat(Array.prototype.slice.call(new Uint8Array(sig))))));
+          return {
+            amb:amb, cuit:cuit, razon:razon, alias:alias,
+            spki:arcaB64(new Uint8Array(ex[0])), key:arcaPem('PRIVATE KEY', new Uint8Array(ex[1])),
+            csr:arcaPem('CERTIFICATE REQUEST', new Uint8Array(csr)), crt:null, vence:null, creado:Date.now()
+          };
+        });
+      });
+    });
+  }
+
+  /* --- lector mínimo de certificados X.509 (DER) --- */
+  function arcaNodo(b, p){
+    var l = b[p + 1], i = p + 2, n, k;
+    if(l & 0x80){ n = l & 0x7f; l = 0; for(k = 0; k < n; k++) l = l * 256 + b[i++]; }
+    return { tag:b[p], p:p, s:i, e:i + l };
+  }
+  function arcaFechaDer(b, n){
+    var t = ''; for(var i = n.s; i < n.e; i++) t += String.fromCharCode(b[i]);
+    var m = n.tag === 0x17 ? /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/.exec(t) : /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$/.exec(t);
+    if(!m) return null;
+    var y = +m[1]; if(n.tag === 0x17) y += y >= 50 ? 1900 : 2000;
+    return Date.UTC(y, +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  }
+  function arcaLeerCert(b){
+    try{
+      var c = arcaNodo(b, 0); if(c.tag !== 0x30) return null;
+      var tbs = arcaNodo(b, c.s), pos = tbs.s, h = arcaNodo(b, pos);
+      if(h.tag === 0xA0) h = arcaNodo(b, h.e);                       /* versión */
+      var serial = h; pos = serial.e;
+      var sigAlg = arcaNodo(b, pos); pos = sigAlg.e;
+      var issuer = arcaNodo(b, pos); pos = issuer.e;
+      var val = arcaNodo(b, pos); pos = val.e;
+      var subj = arcaNodo(b, pos); pos = subj.e;
+      var spki = arcaNodo(b, pos);
+      var d1 = arcaNodo(b, val.s), d2 = arcaNodo(b, d1.e);
+      var cn = '', q = subj.s;
+      while(q < subj.e){
+        var rdn = arcaNodo(b, q), seq = arcaNodo(b, rdn.s), oid = arcaNodo(b, seq.s), v = arcaNodo(b, oid.e);
+        if(oid.e - oid.s === 3 && b[oid.s] === 0x55 && b[oid.s + 1] === 4 && b[oid.s + 2] === 3) cn = new TextDecoder().decode(b.subarray(v.s, v.e));
+        q = rdn.e;
+      }
+      return { spki:arcaB64(b.subarray(spki.p, spki.e)), desde:arcaFechaDer(b, d1), hasta:arcaFechaDer(b, d2), cn:cn };
+    }catch(e){ return null; }
+  }
+
+  /* --- tarjeta en Administración --- */
+  function arcaCard(){
+    if(S.rol !== 'admin') return '';
+    return '<div class="card b6"><div class="c-head"><span class="c-ttl">Facturación electrónica · certificado de ARCA</span>' +
+        '<span class="acts"><button class="btn xs gold" type="button" id="arca-asist">Asistente paso a paso</button></span></div>' +
+      '<div class="rowlist">' + ['homo', 'prod'].map(function(a){
+        var d = arcaDatos(a), est;
+        if(!d) est = '<span class="pill">Sin empezar</span>';
+        else if(!d.crt) est = '<span class="pill warn">Solicitud generada · falta el certificado</span>';
+        else est = '<span class="pill ok">Certificado cargado' + (d.vence ? ' · vence ' + esc(fechaCorta(d.vence)) : '') + '</span>';
+        return '<div class="r"><span class="nm"><b>' + esc(ARCA_AMB[a]) + '</b></span>' + est + '</div>';
+      }).join('') + '</div>' +
+      '<div class="note" style="margin-top:12px"><span class="ic">ℹ</span><div>El certificado habilita al sistema a pedir el CAE a ARCA. ' +
+        'El pedido automático del CAE todavía no está activo: mientras tanto cargás el CAE a mano en cada comprobante, como siempre.</div></div></div>';
+  }
+  function wireArca(){
+    var b = $('#arca-asist');
+    if(b) b.addEventListener('click', function(){ arcaAsistente('homo'); });
+  }
+
+  /* --- asistente --- */
+  function arcaAsistente(amb){
+    var d = arcaDatos(amb), c = S.db.cfg;
+    var paso = function(n, ok, tit, html){
+      return '<div class="rowlist" style="margin-top:12px"><div class="r" style="align-items:flex-start"><span class="nm"><b>' + (ok ? '✔ ' : '') + 'Paso ' + n + ' · ' + esc(tit) + '</b></span></div>' +
+        '<div class="help" style="padding:4px 0 8px">' + html + '</div></div>';
+    };
+    modal({
+      title:'Habilitar facturación electrónica (CAE)', wide:true,
+      sub:'Los pasos 1 y 3 se hacen acá; el 2 y el 4 los hacés vos en la web de ARCA con tu Clave Fiscal',
+      body:
+        '<div class="seg" role="radiogroup" aria-label="Ambiente">' + ['homo', 'prod'].map(function(a){
+          return '<button type="button" data-aamb="' + a + '" class="' + (a === amb ? 'on' : '') + '">' + esc(ARCA_AMB[a]) + '</button>';
+        }).join('') + '</div>' +
+        '<div class="help" style="margin-top:6px">Empezá siempre por <b>Homologación</b> (no emite nada real). Producción se repite igual con otro certificado.</div>' +
+
+        paso(1, !!d, 'Generar la solicitud (CSR) en este equipo',
+          '<div class="grid-f"><div class="f"><label for="ar-cuit">CUIT del titular</label><input class="inp" id="ar-cuit" type="text" inputmode="numeric" maxlength="13" value="' + esc(fmtCuit((d && d.cuit) || c.cuit || '')) + '"></div>' +
+          '<div class="f"><label for="ar-raz">Razón social o nombre</label><input class="inp" id="ar-raz" type="text" maxlength="60" value="' + esc((d && d.razon) || c.nombre || '') + '"></div>' +
+          '<div class="f"><label for="ar-ali">Alias del certificado</label><input class="inp" id="ar-ali" type="text" maxlength="30" value="' + esc((d && d.alias) || ('rave-' + amb)) + '"><span class="help">Sin espacios (letras, números, guion).</span></div></div>' +
+          '<button class="btn" type="button" id="ar-gen" style="margin-top:8px">' + (d ? 'Generar de nuevo (invalida el anterior)' : 'Generar clave y solicitud') + '</button> ' +
+          (d ? '<button class="btn" type="button" id="ar-dcsr">Descargar solicitud (.csr)</button> ' +
+               '<button class="btn ghost" type="button" id="ar-dkey">Copia de la clave (.key)</button>' : '') +
+          '<div class="tiny muted" style="margin-top:6px">La clave privada queda cifrada en este equipo. La copia .key es tu respaldo: guardala fuera del sistema y no la compartas con nadie.</div>') +
+
+        paso(2, !!(d && d.crt), 'Pedir el certificado en la web de ARCA',
+          '<ol style="margin:0 0 0 18px;padding:0;list-style:decimal">' +
+          '<li>Entrá a <b>arca.gob.ar</b> con tu CUIT y Clave Fiscal.</li>' +
+          (amb === 'homo'
+            ? '<li>Buscá el servicio de <b>autogestión de certificados de homologación</b> (se llama "WSASS" o similar [VERIFICAR]) y, si no lo tenés, adherilo desde "Administrador de Relaciones de Clave Fiscal".</li>'
+            : '<li>Abrí el servicio <b>"Administración de Certificados Digitales"</b> [VERIFICAR el nombre exacto]; si no lo tenés, adherilo desde "Administrador de Relaciones de Clave Fiscal".</li>') +
+          '<li>Elegí <b>Nuevo certificado</b>, escribí el mismo alias (<b>' + esc((d && d.alias) || ('rave-' + amb)) + '</b>) y <b>pegá el contenido del archivo .csr</b> (abrilo con el Bloc de notas).</li>' +
+          '<li>ARCA te devuelve el certificado: <b>descargalo (.crt)</b>.</li></ol>') +
+
+        paso(3, !!(d && d.crt), 'Cargar el certificado (.crt) que te dio ARCA',
+          '<input class="inp" id="ar-file" type="file" accept=".crt,.pem,.cer,.txt" aria-label="Archivo del certificado"' + (d ? '' : ' disabled') + '>' +
+          (d && d.crt ? '<div class="note" style="margin-top:8px"><span class="ic">✔</span><div>Cargado' + (d.cn ? ' · ' + esc(d.cn) : '') + (d.vence ? ' · vence ' + esc(fechaCorta(d.vence)) : '') + '</div></div>' : '') +
+          '<div class="tiny muted" style="margin-top:6px">El sistema verifica que el certificado corresponda a la solicitud generada en este equipo.</div>') +
+
+        paso(4, false, 'Autorizar el servicio de factura electrónica en ARCA',
+          '<ol style="margin:0 0 0 18px;padding:0;list-style:decimal">' +
+          '<li>En <b>"Administrador de Relaciones de Clave Fiscal"</b> → <b>Nueva relación</b>: servicio <b>"Facturación Electrónica" (WSFE)</b> [VERIFICAR]; el <b>representante</b> es el alias del certificado.</li>' +
+          '<li>En <b>"Administración de puntos de venta y domicilios"</b> creá (o revisá) un punto de venta del tipo <b>"Factura electrónica - Web Services"</b> [VERIFICAR] y anotá su número en Administración → "Punto de venta (ARCA)".</li>' +
+          '<li>Documentación oficial de los servicios: <b>arca.gob.ar/ws</b> [VERIFICAR].</li></ol>') +
+
+        paso(5, false, 'Pedido automático del CAE',
+          'Todavía <b>no está activo</b>: necesita un módulo de servidor (conexión con WSAA y WSFE) que se prueba primero en Homologación con tu certificado. ' +
+          'Hasta entonces los comprobantes quedan "pendientes de CAE" y lo cargás a mano.'),
+      onOpen:function(box){
+        $$('[data-aamb]', box).forEach(function(x){ x.addEventListener('click', function(){ closeModal(); setTimeout(function(){ arcaAsistente(x.getAttribute('data-aamb')); }, 40); }); });
+        var g = $('#ar-gen', box);
+        if(g) g.addEventListener('click', function(){
+          var cuit = digits($('#ar-cuit', box).value, 11), raz = clean($('#ar-raz', box).value, 60), ali = clean($('#ar-ali', box).value, 30);
+          if(!cuitValido(cuit)){ toast('El CUIT no es válido (11 dígitos con verificador)', 'bad'); return; }
+          if(raz.length < 3){ toast('Escribí la razón social o el nombre', 'bad'); return; }
+          if(!/^[A-Za-z0-9_-]{3,30}$/.test(ali)){ toast('El alias: 3 a 30 letras, números o guion, sin espacios', 'bad'); return; }
+          var hacer = function(){
+            arcaGenerarCSR(amb, cuit, raz, ali).then(function(r){
+              S.db.cfg.arcaCert = S.db.cfg.arcaCert || {};
+              S.db.cfg.arcaCert[amb] = r;
+              audit('arca.csr_generado', ARCA_AMB[amb] + ' · alias ' + ali);
+              refresh(); toast('Solicitud generada. Descargá el .csr y seguí con el paso 2', 'ok');
+              closeModal(); setTimeout(function(){ arcaAsistente(amb); }, 40);
+            }, function(){ toast('Este navegador no puede generar la clave', 'bad'); });
+          };
+          if(d){ closeModal(); setTimeout(function(){ ask('Generar una clave nueva', 'La solicitud y el certificado actuales dejan de servir en este equipo. ¿Seguimos?', hacer, true); }, 60); }
+          else hacer();
+        });
+        var x;
+        if((x = $('#ar-dcsr', box))) x.addEventListener('click', function(){ bajarArchivo((d.alias || 'rave') + '.csr', d.csr, 'application/x-pem-file'); audit('arca.csr_descargado', ARCA_AMB[amb]); });
+        if((x = $('#ar-dkey', box))) x.addEventListener('click', function(){
+          ask('Copia de la clave privada', 'Es el archivo más delicado: quien lo tenga puede facturar a tu nombre. Guardalo en un lugar seguro y nunca lo mandes por WhatsApp ni mail.', function(){
+            bajarArchivo((d.alias || 'rave') + '.key', d.key, 'application/x-pem-file'); audit('arca.clave_descargada', ARCA_AMB[amb]); setTimeout(function(){ arcaAsistente(amb); }, 80);
+          }, true);
+        });
+        if((x = $('#ar-file', box))) x.addEventListener('change', function(){
+          var f = x.files && x.files[0]; if(!f || !d) return;
+          if(f.size > 20000){ toast('Ese archivo no parece un certificado', 'bad'); return; }
+          f.arrayBuffer().then(function(buf){
+            var u = new Uint8Array(buf), der = u[0] === 0x30 ? u : arcaDePem(new TextDecoder().decode(u));
+            var info = der ? arcaLeerCert(der) : null;
+            if(!info){ toast('No pude leer el certificado. Tiene que ser el .crt que descargaste de ARCA', 'bad'); return; }
+            if(info.spki !== d.spki){ toast('Este certificado no corresponde a la solicitud de este equipo. Generá el CSR de nuevo y repetí el paso 2', 'bad'); return; }
+            if(info.hasta && info.hasta < Date.now()){ toast('El certificado está vencido', 'bad'); return; }
+            d.crt = arcaPem('CERTIFICATE', der); d.vence = info.hasta; d.cn = info.cn;
+            audit('arca.certificado_cargado', ARCA_AMB[amb] + ' · vence ' + (info.hasta ? fechaCorta(info.hasta) : '—'));
+            refresh(); toast('Certificado cargado y verificado', 'ok');
+            closeModal(); setTimeout(function(){ arcaAsistente(amb); }, 40);
+          });
+        });
+      },
+      buttons:[{ t:'Cerrar', cls:'ghost' }]
+    });
+  }
+  /* =======================================================================
+     62. IMPRESORAS DE RED / WI-FI (1.5.4)
+     -----------------------------------------------------------------------
+     Un navegador no puede abrir una conexión TCP al puerto 9100 de una
+     impresora, así que hay dos caminos, según el equipo:
+
+       PC con Windows  →  el "agente de impresión" (viene con el instalador,
+                          escucha SÓLO en 127.0.0.1:9101) recibe el pedido
+                          firmado y lo manda a la impresora por la red local.
+       Celular / tablet →  no hay agente: el ticket se deja en la cola
+                          "printq" (se sincroniza por la nube) y la PC del
+                          mostrador, que sí tiene el agente, lo imprime.
+                          Sin nube o sin impresora compartida: se imprime con
+                          la impresora del sistema (AirPrint / Mopria).
+
+     La clave de vinculación vive SÓLO en este navegador (localStorage), nunca
+     en la base ni en la nube. Todo dato que llega por la cola se valida antes
+     de convertirse en comandos de impresora.
+     ======================================================================= */
+  var AG_URL = 'http://127.0.0.1:9101';
+  var AG = { up:false, pareado:false, ts:0 };
+  function ipPrivadaOK(ip){
+    ip = String(ip || '').trim();
+    if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return false;
+    var o = ip.split('.').map(Number);
+    if(o.some(function(n){ return n > 255; })) return false;
+    return o[0] === 10 || (o[0] === 192 && o[1] === 168) || (o[0] === 172 && o[1] >= 16 && o[1] <= 31);
+  }
+  function agClave(){ return localGet('rave.agente', ''); }
+  /* el agente es sólo para Windows: en otros equipos ni se intenta (evita pedidos fallidos y ruido en la consola) */
+  function agPosible(){ return /Windows/.test(navigator.userAgent || '') || !!agClave() || localGet('rave.agente.on', '') === '1'; }
+
+  function agTimeout(ms){
+    var c = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    if(c) setTimeout(function(){ try{ c.abort(); }catch(e){} }, ms);
+    return c ? c.signal : undefined;
+  }
+  function agErrorRed(){
+    return new Error('No encuentro el agente de impresión en esta PC. Se instala con Sistema RAVE para Windows: abrí el sistema desde su acceso directo.');
+  }
+  function agHello(){
+    return fetch(AG_URL + '/hello', { cache:'no-store', signal:agTimeout(2500) }).then(function(r){ return r.json(); }).then(function(j){
+      AG.up = !!(j && j.app === 'rave-agente'); AG.pareado = AG.up && !!j.pareado && !!agClave(); AG.ts = Date.now();
+      return AG;
+    }, function(){ AG.up = false; AG.pareado = false; AG.ts = Date.now(); return AG; });
+  }
+  /* pedido firmado: fecha + número único + HMAC del cuerpo con la clave vinculada */
+  function agPost(ruta, obj, ms){
+    var key = agClave();
+    if(!key) return Promise.reject(new Error('El agente de impresión todavía no está vinculado (Configuración → Periféricos → Vincular)'));
+    var cuerpo = JSON.stringify(obj || {}), ts = String(Date.now()), id = uid() + uid();
+    return sha256hex(cuerpo).then(function(h){ return hmacHex(key, ts + '\n' + id + '\n' + ruta + '\n' + h); }).then(function(mac){
+      return fetch(AG_URL + ruta, { method:'POST', cache:'no-store', signal:agTimeout(ms || 15000), body:cuerpo,
+        headers:{ 'Content-Type':'text/plain', 'X-Rave-Ts':ts, 'X-Rave-Id':id, 'X-Rave-Mac':mac } });
+    }, function(){ throw new Error('No se pudo firmar el pedido'); }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(j){
+        if(!r.ok){
+          var m = j && j.error ? j.error : 'Error del agente';
+          if(r.status === 401 && /firma|vincul/i.test(m)) m += '. Volvé a vincular el agente (Configuración → Periféricos).';
+          throw new Error(m);
+        }
+        return j;
+      });
+    }, function(e){ throw (e && e.name === 'AbortError') ? new Error('La impresora tardó demasiado en responder') : agErrorRed(); });
+  }
+  function agVincular(alTerminar){
+    agHello().then(function(){
+      if(!AG.up){ toast(agErrorRed().message, 'bad'); return; }
+      return fetch(AG_URL + '/pair-start', { method:'POST', headers:{ 'Content-Type':'text/plain' }, body:'{}', cache:'no-store', signal:agTimeout(4000) }).then(function(r){
+        return r.json().then(function(j){ if(!r.ok) throw new Error(j.error || 'No se pudo pedir el código'); });
+      }).then(function(){
+        modal({
+          title:'Vincular el agente de impresión', sub:'Es una sola vez por PC', slim:true,
+          body:'<div class="note"><span class="ic">🔐</span><div>En la pantalla de esta PC apareció un cartel con un <b>código de 6 números</b>. Escribilo acá. Vale 3 minutos.</div></div>' +
+               '<div class="f" style="margin-top:12px"><label for="ag-code">Código</label><input class="inp" id="ag-code" type="text" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="000000"></div>',
+          buttons:[{ t:'Cancelar', cls:'ghost' }, { t:'Vincular', cls:'gold', fn:function(box){
+            var code = digits($('#ag-code', box).value, 6);
+            if(code.length !== 6){ toast('Son 6 números', 'bad'); return false; }
+            fetch(AG_URL + '/pair', { method:'POST', headers:{ 'Content-Type':'text/plain' }, body:JSON.stringify({ code:code }), cache:'no-store', signal:agTimeout(5000) }).then(function(r){
+              return r.json().then(function(j){ if(!r.ok || !j.key) throw new Error(j.error || 'Código incorrecto'); return j.key; });
+            }).then(function(k){
+              localSet('rave.agente', k);
+              audit('agente.vinculado', 'Agente de impresión vinculado a este equipo');
+              AG.pareado = true; closeModal(); refresh(); toast('Agente vinculado', 'ok');
+              if(alTerminar) alTerminar();
+            }, function(e){ toast(e && e.message || 'No se pudo vincular', 'bad'); });
+            return false;
+          } }]
+        });
+      });
+    }).catch(function(e){ toast(e && e.message || 'No se pudo pedir el código', 'bad'); });
+  }
+
+  /* ---------------- driver de red ---------------- */
+  DM.drivers.red = {
+    nombre:'Impresora de red / Wi-Fi (IP)',
+    disponible:function(){ return true; },
+    pedir:function(dev){ return Promise.resolve(dev); },
+    buscar:function(dev){ return Promise.resolve(dev); },
+    abrir:function(dev){
+      if(!ipPrivadaOK(dev.ip)) return Promise.reject(new Error('La dirección IP no es de una red local (ej. 192.168.1.50)'));
+      return agHello().then(function(){
+        if(!AG.up) throw agErrorRed();
+        if(!AG.pareado) throw new Error('Falta vincular el agente de impresión: Configuración → Periféricos → "Vincular agente"');
+        return agPost('/probe', { ip:dev.ip, port:9100 }, 6000);
+      }).then(function(j){
+        if(!j.ok) throw new Error('La impresora ' + dev.ip + ' no responde: revisá que esté prendida y conectada a la misma red Wi-Fi que esta PC');
+        return { red:true, ip:dev.ip, info:{} };
+      });
+    },
+    escribir:function(c, bytes, job){
+      return agPost('/print', { ip:c.ip, port:9100, data:b64(bytes), job:(job && job.id) ? String(job.id).slice(0, 80) : '' }, 15000);
+    },
+    vivo:function(c){ return !!(c && c.red && AG.up); }
+  };
+
+  /* ---------------- alta desde el asistente ---------------- */
+  function redAltaDesdeAsistente(dev, box){
+    dev.ip = ($('#dv-ip', box).value || '').trim();
+    dev.compartida = !!($('#dv-share', box) && $('#dv-share', box).checked);
+    if(dev.tipo !== 'impresora'){ toast('Por red sólo se conectan impresoras', 'bad'); return; }
+    if(!ipPrivadaOK(dev.ip)){ toast('Escribí la IP de la impresora (ej. 192.168.1.50) o tocá "Buscar impresoras en mi red"', 'bad'); return; }
+    conectar(dev, true).then(function(){
+      perifericos().push(dev);
+      audit('periferico.alta', 'Impresora de red · ' + (dev.modelo || 'genérica') + ' · ' + dev.ip + (dev.compartida ? ' · compartida' : ''));
+      closeModal(); refresh(); probarDispositivo(dev);
+    }, function(e){ toast(e && e.message ? e.message : 'No se pudo conectar', 'bad'); });
+  }
+  D.addEventListener('click', function(e){
+    var t = e.target;
+    if(!t || t.id !== 'dv-scan') return;
+    var out = $('#dv-scan-res');
+    if(out) out.textContent = 'Buscando…';
+    agHello().then(function(){
+      if(!AG.up) throw agErrorRed();
+      if(!AG.pareado) throw new Error('Primero vinculá el agente (Configuración → Periféricos)');
+      return agPost('/scan', {}, 20000);
+    }).then(function(j){
+      var l = (j.impresoras || []).filter(ipPrivadaOK);
+      if(!out) return;
+      out.innerHTML = l.length ? 'Encontré: ' + l.map(function(ip){ return '<button class="btn xs gold" type="button" data-ipsel="' + esc(ip) + '">' + esc(ip) + '</button>'; }).join(' ')
+                               : 'No encontré ninguna. Revisá que esté prendida y en el mismo Wi-Fi, o escribí la IP a mano.';
+      $$('[data-ipsel]', out).forEach(function(b){ b.addEventListener('click', function(){ var i = $('#dv-ip'); if(i) i.value = b.getAttribute('data-ipsel'); }); });
+    }).catch(function(err){ if(out) out.textContent = err && err.message ? err.message : 'No se pudo buscar'; });
+  });
+
+  /* ---------------- tarjeta de estado en Configuración ---------------- */
+  function impresorasRemotas(){
+    var yo = equipoId();
+    return perifericos().filter(function(d){ return d.tipo === 'impresora' && d.conexion === 'red' && d.compartida && d.equipo !== yo; });
+  }
+  function impresoraRemota(sector){
+    return impresorasRemotas().filter(function(d){ return (d.sector || 'caja') === (sector || 'caja'); })[0] || null;
+  }
+  function redInfoHTML(){
+    var cap = capacidades(), movil = cap.ios || cap.android, rem = impresorasRemotas();
+    var h = '<div class="divider"></div><div class="c-ttl" style="margin-bottom:8px">Impresoras de red / Wi-Fi</div>';
+    if(movil){
+      h += rem.length
+        ? '<div class="tiny">Este equipo imprime en: ' + rem.map(function(d){ return '<b>' + esc(d.modelo || 'Impresora de red') + '</b> (' + esc(d.sector || 'caja') + ')'; }).join(', ') +
+          ' · pasa por la PC del mostrador, que tiene que estar abierta.</div>'
+        : '<div class="tiny muted">Todavía no hay impresoras Wi-Fi compartidas. Se agregan desde la PC del mostrador (marcando "dejar que los celulares y tablets impriman acá"). Mientras tanto se imprime con la impresora del sistema (AirPrint / Mopria).</div>';
+      return h;
+    }
+    if(!agPosible()) return h + '<div class="tiny muted">El agente de impresión de red es para Windows. En este equipo se imprime con la impresora del sistema' +
+      (rem.length ? ' y con las impresoras Wi-Fi compartidas del mostrador (' + rem.map(function(d){ return esc(d.modelo || 'impresora de red'); }).join(', ') + ')' : '') + '.</div>';
+    h += '<div class="tiny" id="ag-st">Agente de impresión: comprobando…</div>' +
+         '<div class="inline" style="margin-top:8px"><button class="btn xs" type="button" id="ag-pair">Vincular agente</button></div>' +
+         '<div class="tiny muted" style="margin-top:8px">Elegí "Manual" → "Impresora de red (IP)" para sumar una impresora Wi-Fi o de red. ' +
+         'El agente viene con el instalador de Windows y sólo habla con este navegador y con impresoras de tu red local.</div>';
+    return h;
+  }
+  function redEstadoTxt(){
+    var el = $('#ag-st'); if(!el) return;
+    el.innerHTML = AG.up ? (AG.pareado ? '<span class="pill ok">Agente de impresión: activo y vinculado</span>'
+                                       : '<span class="pill warn">Agente activo: falta vincularlo</span>')
+                         : '<span class="pill">Agente de impresión: no detectado (abrí el sistema con el acceso directo de Windows)</span>';
+    var b = $('#ag-pair'); if(b) b.textContent = AG.pareado ? 'Volver a vincular' : 'Vincular agente';
+  }
+  function redWire(){
+    var b = $('#ag-pair');
+    if(b){ b.addEventListener('click', function(){ agVincular(); }); agHello().then(redEstadoTxt); }
+  }
+
+  /* ---------------- celular / tablet → cola → PC del mostrador ---------------- */
+  var PQ_VIDA = 15 * 60 * 1000, PQ_MAX = 40;
+  /* sólo estos campos y límites: lo que viene de la cola nunca se imprime tal cual */
+  function sanLineas(L){
+    if(!Array.isArray(L)) return null;
+    return L.slice(0, 300).map(function(l){
+      if(!l || typeof l !== 'object') return null;
+      var o = {};
+      if(l.hr) o.hr = 1;
+      if(l.c != null) o.c = String(l.c).slice(0, 160);
+      if(l.k != null){ o.k = String(l.k).slice(0, 80); o.v = String(l.v == null ? '' : l.v).slice(0, 40); }
+      if(l.b) o.b = 1;
+      if(l.big) o.big = 1;
+      if(l.al === 'c' || l.al === 'r') o.al = l.al;
+      return o;
+    }).filter(Boolean);
+  }
+  function enviarACola(L, o){
+    if(!nubeOn()) return false;                          /* sin nube no hay cómo avisarle a la PC */
+    var rem = impresoraRemota(o && o.sector);
+    if(!rem) return false;
+    var lineas = sanLineas(L);
+    if(!lineas || !lineas.length) return false;
+    var q = S.db.printq || (S.db.printq = []);
+    var id = 'pq-' + ((o && o.id) ? String(o.id).slice(0, 60) : uid());
+    if(q.some(function(j){ return j.id === id; })) return true;
+    q.push({ id:id, ts:Date.now(), destino:rem.id, L:lineas });
+    if(q.length > PQ_MAX) q.splice(0, q.length - PQ_MAX);
+    save();
+    toast('Enviado a la impresora del mostrador. Si no sale en un minuto, revisá que esa PC esté abierta.', 'ok');
+    return true;
+  }
+  function colaRedProcesar(){
+    if(!S.db || !Array.isArray(S.db.printq) || !S.db.printq.length) return;
+    var mias = {};
+    misPerifericos().forEach(function(d){ if(d.tipo === 'impresora' && d.conexion === 'red') mias[d.id] = d; });
+    var ahora = Date.now(), cambio = false, enCola = {};
+    DM.cola.forEach(function(j){ enCola[j.id] = true; });
+    S.db.printq = S.db.printq.filter(function(j){
+      if(!j || typeof j.id !== 'string' || typeof j.ts !== 'number' || Math.abs(ahora - j.ts) > PQ_VIDA){ cambio = true; return false; }
+      if(DM.impresos[j.id]){ cambio = true; return false; }
+      var dev = mias[j.destino];
+      if(!dev || enCola[j.id]) return true;
+      var L = sanLineas(j.L);
+      if(!L || !L.length){ cambio = true; return false; }
+      DM.cola.push({ id:j.id, dev:dev, bytes:escposDocumento(L, dev), intentos:0, alTerminar:function(){
+        S.db.printq = (S.db.printq || []).filter(function(x){ return x.id !== j.id; }); save();
+      } });
+      enCola[j.id] = true;
+      return true;
+    });
+    if(S.db.printq.length > PQ_MAX){ S.db.printq.splice(0, S.db.printq.length - PQ_MAX); cambio = true; }
+    if(cambio) save();
+    procesarCola();
+  }
+  /* estado de cada impresora de red de ESTE equipo: se verifica sola cada 30 s */
+  function redVerificar(){
+    if(!S.db) return;
+    if(!agPosible()) return;
+    var rojas = misPerifericos().filter(function(d){ return d.tipo === 'impresora' && d.conexion === 'red'; });
+    if(!rojas.length && !agClave()) return;
+    agHello().then(function(){
+      redEstadoTxt();
+      rojas.forEach(function(d){
+        if(!AG.up || !AG.pareado){ delete DM.conn[d.id]; return; }
+        agPost('/probe', { ip:d.ip, port:9100 }, 5000).then(function(j){
+          if(j.ok) DM.conn[d.id] = { red:true, ip:d.ip, info:{} }; else delete DM.conn[d.id];
+        }, function(){ delete DM.conn[d.id]; });
+      });
+    });
+  }
+  setInterval(colaRedProcesar, 4000);
+  setInterval(redVerificar, 30000);
+  setTimeout(redVerificar, 5000);
 
   /* =======================================================================
      27. CABLEADO DE EVENTOS Y ARRANQUE
