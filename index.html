@@ -1787,9 +1787,14 @@ body.pantalla-cliente > *:not(#rv-cliente){ display:none !important; }
 @media (max-width:560px){ #erp .pos-keys{ grid-template-columns:repeat(3,minmax(0,1fr)); } #erp .pos-keys .fk{ font-size:11.5px; padding:0 8px; } }
 
 /* Ingreso / egreso de efectivo en el mostrador */
-#erp .pos-cajaops{ display:flex; gap:8px; margin:-6px 0 16px; flex-wrap:wrap; }
+#erp .pos-cajaops{ display:flex; justify-content:center; gap:8px; margin:-6px 0 16px; flex-wrap:wrap; }
 #erp .pos-cajaops button{ min-height:48px; padding:0 16px; border:1px solid var(--p-line); border-radius:12px; background:var(--p-card, #fff); color:var(--p-ink); font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
 #erp .pos-cajaops button.egr{ color:var(--p-bad); }
+
+#erp .pos-keys{ max-width:1100px; margin-left:auto; margin-right:auto; }
+#erp .pos-keys .fk{ justify-content:center; text-align:center; }
+#erp .pos-keys .fk kbd{ margin-left:4px; }
+#erp .pos-cajaops button{ display:inline-flex; align-items:center; justify-content:center; }
 
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFFklEQVR42rWXTWxc1RXHf+fc9+bDHmeIg+sQEgWrfEgGCmIRUVXIC6hUVSygbJAQgqqLSlWrbiq1m27ogmXVblBVAdkgEEWIUhRALFBVSqSKIoGAJo4Te0iEseRkYmdm/GbmvXO6eGNjOzPxYMyRjvTeve/d+7/n/O/5ELaKArb+Mj09XYHVAqvsTvZBp1NK5+bmNq8QgGz9RbZPTE5OjlbHRp4w95/g3IJTAse3fjuUCLiIdBzmgTc0aj83O7u4vBmEbD75zUeP3kukx4Pqbe6Ou7MXIiKICGa26MbP5+bn/7EOQtYfbpmaOobyLsiIWdYVEe0B2wtxd89UNRYgy/yhswsLfweCADIxPTFaTUY/VtWpLLNUhIhvR7L8YL6aRNn0+dPnFxXwajLyeAhhKsuyqzZXGU5FhiJJMPNMNVQLqf4acAG4eeqmdzXojJlZzyUbknQcc0e2r+7gfLWxqhAHIQRwy+cGiImImNvsdeeuv1O+Nzk52hwpn1aVGz1n3ZatbruxSKmgpJmzeVJ77DCDNHOabWPpcsrlRka5qASFARzOl3Ffk8jviDohlMCL/QwowE9/uJ+jEwVUhbCJkq12bplKSSnFykoro97I+Pf/mvztvRXaXSMKMggEDpGbl2X68OHxdhxOqepEPwsUYyGOhKceO8ih8Zg0czKD37+wyOKllPFK4OHvV3ng7grd1KmOBk6eavGHl5YG3ghA3L0rwe/e8Zo1E+fKWrZBSOnp+vj55S5/en2Z0xfahCAs1VOO3TrCfbeP0mzbhqsGyY4AIoUoSP9xESqlnB+ffp5QjASRnBPfvaHIMOFzRwDOQDINiDhsgBjmt11HutQgdWgkOdnuuKlE0nWKcU68D860rknCDUvuFkClpFRKyoGxwCM/qHLroSLukALPnLjIR/MJ5YJgewpAchMHhacemySoEAWhEAn1Rsab/13lxAdXuNRIKcc6lOu+ngt6/jWHv759iWdOXORSI6XdNQqxMHNnhSMTMSqCDLmy7i61wSe1hFfev8yfX18mqIDD4QMxv3l4gupIIE2HKyB2TcJSQTi4P+bDs2u891mTsRHlciPjO9WIB4+N0RoiBgwFQHoJp58VzJw4El49uUKrbcSR0GobP7pnH4cOxHRSR+UbAkh7yabfeDd1SrFy+kKbf37SpFJWkq5z/b7Ag8fGaCS24y3YEcBoSRgr5xnaPD+5+1fjIhBHwmsnV7iyZsRBaCTG/XdVmD5SIgrS14IbFr5WMhLg6ScP9s2Gax2nmxq/Pf4lS/WUta7xix8f4NH7rmN1zYhUMJyFpQ6/O/4labZRU2xJRpGZybYaZEsYfv6d+uB6wGGlmSEC5YLy8r9W+HBujczzuRByN/UtaPJCUSJvtztSLKSDTPTRfNJ3Ae8lmlJBEcl92Wwb/5ltbaB0zzNoqaD9KuXM3DrrJdn7qnKvuV9Vku3E4s0kG3RjthExL8nMF1Lzae39+ZqoivdpBMyvrdtdtuM3jqmIILxVq9USBaRV6DybZdmyqkab26ZvQUwEycy6jv4R8oitX5z64qLhT+QmlODu3V6P6Huk5u4poCFocOOX586dOwNo6H0Q6vWV2er+6sci8kAUQmXdpXuhIiIhBAUSM/vV2fnaX9Y7srDJfaFeX/ls//jIi3jo4D4OlHNWuPUs8rVVRNoIC27+kmb+szMLtbf6NadXtc4zMzPR4uL8ETPK36wpjDtpml6o1WpJv/b8/wkypQGng8zuAAAAAElFTkSuQmCC">
@@ -3651,7 +3656,7 @@ var MENU_PUBLICADO = /*__CATALOGO_DATOS__*/{"secciones":[{"cat":"promo","nom":"P
             <button class="btn xs" type="button" data-go="caja" style="margin-left:8px">Abrir caja</button></div>
         </div>
         <div class="pos-keys" id="pos-keys" role="toolbar" aria-label="Atajos de teclado del mostrador (F1 a F12)"></div>
-        <div class="pos-cajaops" id="pos-cajaops"><button type="button" id="pos-ing">＋ Ingreso de efectivo</button><button type="button" class="egr" id="pos-egr">－ Egreso de efectivo</button></div>
+        <div class="pos-cajaops" id="pos-cajaops"><button type="button" id="pos-newprod">＋ Producto nuevo</button><button type="button" id="pos-ing">＋ Ingreso de efectivo</button><button type="button" class="egr" id="pos-egr">－ Egreso de efectivo</button></div>
         <div class="pos">
           <div class="stack">
             <div class="card">
@@ -6711,6 +6716,7 @@ var QR = (function(){
     movManual(tipo);
   }
   D.addEventListener('click', function(e){
+    if(e.target.closest && e.target.closest('#pos-newprod')){ prodModal(null); return; }
     var b = e.target.closest && e.target.closest('#pos-ing, #pos-egr');
     if(b) posMovCaja(b.id === 'pos-ing' ? 'ingreso' : 'egreso');
   });
