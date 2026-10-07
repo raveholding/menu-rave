@@ -5672,6 +5672,8 @@ var QR = (function(){
   R.vender = function(){
     var c = S.db.cfg;
     $('#pos-caja-warn').style.display = turnoAbierto() ? 'none' : 'flex';
+    /* crear productos es de administración (el servidor lo rechaza para mostrador): el botón sólo lo ve quien puede */
+    var npb = $('#pos-newprod'); if(npb) npb.style.display = can('inventario') ? '' : 'none';
 
     /* aviso de horario de alcohol (Ley 24.788): los productos marcados como
        bebida alcohólica quedan bloqueados fuera del horario configurado */
@@ -6716,7 +6718,7 @@ var QR = (function(){
     movManual(tipo);
   }
   D.addEventListener('click', function(e){
-    if(e.target.closest && e.target.closest('#pos-newprod')){ prodModal(null); return; }
+    if(e.target.closest && e.target.closest('#pos-newprod')){ if(!can('inventario')){ toast('Crear productos lo hace un administrador', 'bad'); return; } prodModal(null); return; }
     var b = e.target.closest && e.target.closest('#pos-ing, #pos-egr');
     if(b) posMovCaja(b.id === 'pos-ing' ? 'ingreso' : 'egreso');
   });
